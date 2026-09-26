@@ -59,9 +59,12 @@ def bold_name(name: str) -> str:
  
  
 def time_greeting() -> str:
-    """Server ke current time ke hisaab se 'Good Morning/Afternoon/Evening/Night' return karta hai."""
+    """India (IST, UTC+5:30) ke current time ke hisaab se
+    'Good Morning/Afternoon/Evening/Night' return karta hai — server chahe
+    kisi bhi country mein ho (Render UTC use karta hai), IST hi count hoga."""
     import datetime
-    hour = datetime.datetime.now().hour
+    ist = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+    hour = datetime.datetime.now(ist).hour
     if 5 <= hour < 12:
         return "GOOD MORNING"
     if 12 <= hour < 17:
