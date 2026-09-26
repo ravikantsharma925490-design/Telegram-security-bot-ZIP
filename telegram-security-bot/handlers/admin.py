@@ -19,15 +19,28 @@ async def is_owner(chat_id: int, user_id: int) -> bool:
 async def is_authorized_admin(chat_id: int, user_id: int, permission: str = None, context: ContextTypes.DEFAULT_TYPE = None) -> bool:
     """
     Owner ya bot ke through authorized admin check karta hai.
-    Agar 'permission' None hai (yaani sirf general exemption chahiye, jaise
-    moderation/force-join se bachna), to Telegram ke real admins/owner bhi
-    automatically authorized maane jaate hain — chahe unhe /addadmin se add
-    kiya ho ya sirf Telegram ke group settings se admin banaya ho.
-    Specific permissions (can_ban, can_mute, can_warn, can_settings) ke liye
-    sirf owner ya bot ke /addadmin se di gayi permission hi count hoti hai.
+ 
+    Telegram ka real group "creator" hamesha fully authorized hota hai — chahe
+    /addadmin se koi specific permission na di gayi ho, aur chahe DB ka
+    owner_id kisi aur wajah se match na kare (jaise setup kisi doosre admin ne
+    kiya ho). Real Telegram "administrator" sirf general exemption
+    (permission=None — jaise moderation/force-join se bachna) ke liye count
+    hota hai; specific permissions (can_ban, can_mute, can_warn, can_settings)
+    ke liye sirf owner, real creator, ya bot ke /addadmin se di gayi permission
+    hi count hoti hai.
     """
     if await is_owner(chat_id, user_id):
         return True
+ 
+    if context is not None:
+        try:
+            member = await context.bot.get_chat_member(chat_id, user_id)
+            if member.status == "creator":
+                return True
+            if permission is None and member.status == "administrator":
+                return True
+        except Exception:
+            pass
  
     record = db.get_group_admin(chat_id, user_id)
     if record:
@@ -36,14 +49,6 @@ async def is_authorized_admin(chat_id: int, user_id: int, permission: str = None
         if record.get(permission, 0):
             return True
  
-    if permission is None and context is not None:
-        try:
-            member = await context.bot.get_chat_member(chat_id, user_id)
-            if member.status in ("administrator", "creator"):
-                return True
-        except Exception:
-            pass
- 
     return False
  
  
@@ -51,7 +56,7 @@ async def guard_or_warn(update: Update, context: ContextTypes.DEFAULT_TYPE, perm
     """True return karta hai agar user authorized hai. Warna warning bhej kar False return karta hai."""
     chat = update.effective_chat
     user = update.effective_user
-    if await is_authorized_admin(chat.id, user.id, permission):
+    if await is_authorized_admin(chat.id, user.id, permission, context):
         return True
  
     lang = db.get_group(chat.id)["default_language"]
@@ -158,4 +163,5 @@ async def _issue_warning(update: Update, context: ContextTypes.DEFAULT_TYPE, tar
         db.reset_warnings(chat.id, target.id)
         await update.message.reply_text(t(lang, "warning_limit_reached", name=target.full_name))
         await send_log(context, chat.id, t(lang, "log_mute", name=target.full_name))
+ 
  
