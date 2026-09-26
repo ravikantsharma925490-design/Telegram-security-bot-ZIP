@@ -18,35 +18,33 @@ from config import FLOOD_MESSAGE_LIMIT, FLOOD_TIME_WINDOW, LINK_SPAM_RESTRICT_DA
 # In-memory flood tracker: {(chat_id, user_id): [timestamps]}
 _message_times = defaultdict(list)
  
-# Bad-word list — common Hindi/Urdu aur English gaaliyan + unke common spelling
-# variations (taaki log thoda spelling badal kar bhi bypass na kar sakein).
-# Zaroorat ke hisaab se aage aur words add/remove kar sakte hain.
-BAD_WORDS = {
-    # Hindi/Urdu — madarchod
-    "madarchod", "madarchodd", "mc", "mderchod", "madrchod", "matarchod",
-    # behenchod / bhenchod
-    "behenchod", "bhenchod", "bc", "bhenchodd", "bahenchod", "bhosdike",
-    "bhosdiwala", "bhosda", "bhosdi",
-    # chutiya / chutiyapa
-    "chutiya", "chutiye", "chutiyapa", "chutya", "chutmarike",
-    # randi / raand
-    "randi", "randy", "raand", "randwa", "randibaaz",
-    # gandu / gaand
-    "gandu", "gaand", "gand", "gandmasti", "gaandu",
-    # lund / lauda
-    "lund", "lauda", "laude", "lawda", "loda", "lodu",
-    # chodu / chod
-    "chod", "chodu", "chodna", "chudai", "chuda",
-    # harami / kutta / saala etc.
-    "harami", "haraami", "kutta", "kutti", "saala", "saali", "kamina",
-    "kaminey", "kamine",
-    # English profanity
-    "fuck", "fucking", "fucker", "fuk", "fck", "fuckin", "motherfucker",
-    "bitch", "bitches", "asshole", "ass", "bastard", "bastards", "slut",
-    "whore", "dick", "dickhead", "pussy", "cunt", "shit", "shitty",
-    "damn", "piss", "nigger", "nigga",
+# Bad-word list — file se load hoti hai (badwords.txt), taaki aap khud
+# words add/remove kar sako bina code chhede. Agar file nahi milti to yahan
+# di hui default list use hoti hai.
+_DEFAULT_BAD_WORDS = {
+    "madarchod", "madharchod", "mc", "behenchod", "bhenchod", "bc",
+    "chutiya", "chutia", "chuthiya", "randi", "randy", "gandu", "gaandu",
+    "harami", "haraami", "kutta", "kutte", "kamina", "kamine", "saala",
+    "saali", "chodu", "lund", "loda", "lauda", "laude", "gaand", "gand",
+    "jhant", "jhaant", "raand", "bhosdi", "bhosdike", "bhosda",
+    "fuck", "fucking", "fucker", "fck", "f*ck", "bitch", "asshole",
+    "bastard", "slut", "whore", "dick", "pussy", "motherfucker",
 }
  
+import os as _os
+ 
+ 
+def _load_bad_words():
+    path = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))), "badwords.txt")
+    if _os.path.exists(path):
+        with open(path, encoding="utf-8") as f:
+            words = {line.strip().lower() for line in f if line.strip() and not line.startswith("#")}
+        if words:
+            return words
+    return _DEFAULT_BAD_WORDS
+ 
+ 
+BAD_WORDS = _load_bad_words()
  
  
 def _contains_bad_word(text: str) -> bool:
@@ -94,14 +92,11 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
  
     # 2) Flood protection
     if group["flood_protection"] and _is_flooding(chat.id, user.id):
-        until = int(time.time()) + group["mute_duration"]
         try:
             await context.bot.restrict_chat_member(
                 chat.id, user.id,
-                permissions=ChatPermissions(can_send_messages=False),
-                until_date=until,
+                permissions=None,  # library default restricts sending; explicit below
             )
-            db.block_user(chat.id, user.id, group["mute_duration"])
         except Exception:
             pass
         await context.bot.send_message(chat.id, t(lang, "flood_muted", name=user.full_name))
@@ -129,15 +124,12 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 pass
             db.block_user(chat.id, user.id, restrict_seconds)
  
-            spam_text = (
-                t(lang, "spam_deleted")
-                + "\n"
-                + t(lang, "spam_restricted", name=user.full_name, days=LINK_SPAM_RESTRICT_DAYS)
+            await context.bot.send_message(
+                chat.id,
+                f"{t(lang, 'spam_deleted')}\n🚫 {user.full_name} link/username bhejne ki wajah se {LINK_SPAM_RESTRICT_DAYS} din ke liye restrict kar diya gaya hai.",
             )
-            await context.bot.send_message(chat.id, spam_text)
             await send_log(context, chat.id, t(lang, "log_spam", name=user.full_name))
             return False
  
     return True
- 
  
