@@ -50,7 +50,7 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return True
  
     group = db.get_group(chat.id)
-    lang = group["default_language"]
+    lang = db.get_effective_language(chat.id, user.id)  # jis user ko message ja raha hai, uski apni language
  
     # Owner/admins par moderation apply nahi karte
     from handlers.admin import is_authorized_admin
@@ -110,3 +110,4 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             return False
  
     return True
+ 
