@@ -54,7 +54,7 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
  
     # Owner/admins par moderation apply nahi karte
     from handlers.admin import is_authorized_admin
-    if await is_authorized_admin(chat.id, user.id):
+    if await is_authorized_admin(chat.id, user.id, context=context):
         return True
  
     # 1) Bad word filter
@@ -110,4 +110,3 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             return False
  
     return True
- 
