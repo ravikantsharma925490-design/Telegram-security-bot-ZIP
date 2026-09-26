@@ -159,3 +159,4 @@ def is_blocked(chat_id, user_id):
         _db.blocked_users.delete_one({"chat_id": chat_id, "user_id": user_id})
         return False
     return True
+ 
