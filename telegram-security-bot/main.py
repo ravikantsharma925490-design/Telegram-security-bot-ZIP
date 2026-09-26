@@ -21,7 +21,7 @@ from telegram.ext import (
 import database as db
 from config import BOT_TOKEN
  
-from handlers.setup import start_command, help_command
+from handlers.setup import start_command, help_command, get_file_id_command
 from handlers.settings import settings_command, settings_toggle_callback, setlanguage_command, setlogchat_command
 from handlers.admin import add_admin_command, remove_admin_command, ban_command, unban_command, mute_command, warn_command
 from handlers.welcome import auto_accept_join_request, welcome_new_member, member_left, language_callback, language_command
@@ -112,6 +112,9 @@ def main():
     # New member / left member
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_new_member))
     app.add_handler(MessageHandler(filters.StatusUpdate.LEFT_CHAT_MEMBER, member_left))
+ 
+    # Private chat mein photo bhejo to file_id reply karega (WELCOME_IMAGE set karne ke liye)
+    app.add_handler(MessageHandler(filters.PHOTO & filters.ChatType.PRIVATE, get_file_id_command))
  
     # Normal group messages -> force join + moderation + media checks
     app.add_handler(MessageHandler(
