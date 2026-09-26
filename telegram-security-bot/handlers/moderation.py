@@ -1,0 +1,96 @@
+"""
+Moderation handler — anti-spam, flood protection aur bad-word filter.
+Har violation par warning system (handlers/admin.py ki _issue_warning) call hota hai.
+"""
+
+import time
+from collections import defaultdict
+
+from telegram import Update
+from telegram.ext import ContextTypes
+
+import database as db
+from utils.lang import t
+from handlers.logger import send_log
+from handlers.admin import _issue_warning
+from config import FLOOD_MESSAGE_LIMIT, FLOOD_TIME_WINDOW
+
+# In-memory flood tracker: {(chat_id, user_id): [timestamps]}
+_message_times = defaultdict(list)
+
+# Basic bad-word list — zaroorat ke hisaab se aap apni list add kar sakte hain
+BAD_WORDS = {
+    "madarchod", "behenchod", "bhenchod", "chutiya", "randi", "gandu",
+    "fuck", "fucking", "bitch", "asshole", "bastard",
+}
+
+
+def _contains_bad_word(text: str) -> bool:
+    words = text.lower().split()
+    return any(w.strip(".,!?") in BAD_WORDS for w in words)
+
+
+def _is_flooding(chat_id: int, user_id: int) -> bool:
+    now = time.time()
+    key = (chat_id, user_id)
+    _message_times[key] = [ts for ts in _message_times[key] if now - ts < FLOOD_TIME_WINDOW]
+    _message_times[key].append(now)
+    return len(_message_times[key]) > FLOOD_MESSAGE_LIMIT
+
+
+async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """
+    Return True agar message ko aage process hone dena hai (allowed),
+    False agar already handle (delete) ho chuka hai.
+    """
+    message = update.effective_message
+    chat = update.effective_chat
+    user = update.effective_user
+    if not message or not message.text or user.is_bot:
+        return True
+
+    group = db.get_group(chat.id)
+    lang = group["default_language"]
+
+    # Owner/admins par moderation apply nahi karte
+    from handlers.admin import is_authorized_admin
+    if await is_authorized_admin(chat.id, user.id):
+        return True
+
+    # 1) Bad word filter
+    if group["bad_word_filter"] and _contains_bad_word(message.text):
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        await context.bot.send_message(chat.id, t(lang, "bad_word_deleted"))
+        await send_log(context, chat.id, t(lang, "log_bad_word", name=user.full_name))
+        await _issue_warning(update, context, user, "bad language")
+        return False
+
+    # 2) Flood protection
+    if group["flood_protection"] and _is_flooding(chat.id, user.id):
+        try:
+            await context.bot.restrict_chat_member(
+                chat.id, user.id,
+                permissions=None,  # library default restricts sending; explicit below
+            )
+        except Exception:
+            pass
+        await context.bot.send_message(chat.id, t(lang, "flood_muted", name=user.full_name))
+        await send_log(context, chat.id, t(lang, "log_flood", name=user.full_name))
+        return False
+
+    # 3) Basic anti-spam: same message repeated / too many links
+    if group["anti_spam"]:
+        link_count = message.text.count("http://") + message.text.count("https://") + message.text.count("t.me/")
+        if link_count >= 3:
+            try:
+                await message.delete()
+            except Exception:
+                pass
+            await context.bot.send_message(chat.id, t(lang, "spam_deleted"))
+            await send_log(context, chat.id, t(lang, "log_spam", name=user.full_name))
+            return False
+
+    return True
