@@ -48,7 +48,7 @@ async def force_join_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if in_channel and in_group:
         return True
  
-    lang = group["default_language"]
+    lang = db.get_effective_language(chat.id, user.id)
     try:
         await message.delete()
     except Exception:
@@ -73,7 +73,7 @@ async def verify_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     user = update.effective_user
     group = db.get_group(chat.id)
-    lang = group["default_language"]
+    lang = db.get_effective_language(chat.id, user.id)
  
     in_channel = await _is_member(context, group["required_channel"], user.id)
     in_group = await _is_member(context, group["required_group"], user.id)
