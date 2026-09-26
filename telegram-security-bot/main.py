@@ -22,7 +22,7 @@ import database as db
 from config import BOT_TOKEN
  
 from handlers.setup import start_command, help_command
-from handlers.settings import settings_command, settings_toggle_callback, setlanguage_command
+from handlers.settings import settings_command, settings_toggle_callback, setlanguage_command, setlogchat_command
 from handlers.admin import add_admin_command, remove_admin_command, ban_command, unban_command, mute_command, warn_command
 from handlers.welcome import auto_accept_join_request, welcome_new_member, member_left, language_callback, language_command
 from handlers.force_join import force_join_check, verify_callback
@@ -95,6 +95,8 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("settings", settings_command))
     app.add_handler(CommandHandler("setlanguage", setlanguage_command))
+    app.add_handler(CommandHandler("setlogchat", setlogchat_command))
+    app.add_handler(CommandHandler("language", language_command))
  
     # Admin commands
     app.add_handler(CommandHandler("addadmin", add_admin_command))
@@ -128,4 +130,5 @@ def main():
  
 if __name__ == "__main__":
     main()
+ 
  
