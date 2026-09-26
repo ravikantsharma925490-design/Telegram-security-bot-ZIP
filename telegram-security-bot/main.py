@@ -8,6 +8,9 @@ Chalane ke liye:
 """
  
 import logging
+import os
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
  
 from telegram import Update
 from telegram.ext import (
@@ -49,7 +52,32 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
     await media_moderation_check(update, context)
  
  
+class _HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"Bot is running.")
+ 
+    def log_message(self, format, *args):
+        pass  # HTTP request logs spam na kare
+ 
+ 
+def _run_dummy_web_server():
+    """
+    Render (Web Service) ko ek open port chahiye hota hai, warna port-scan
+    timeout warning deta rehta hai. Ye bas ek chhota HTTP server hai jo
+    'Bot is running.' bolta hai — bot ke asli kaam (polling) se iska koi
+    lena dena nahi, ye sirf background thread mein chalta hai.
+    """
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), _HealthCheckHandler)
+    server.serve_forever()
+ 
+ 
 def main():
+    threading.Thread(target=_run_dummy_web_server, daemon=True).start()
+ 
     db.init_db()
  
     app = (
