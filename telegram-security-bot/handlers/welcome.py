@@ -3,7 +3,7 @@ Welcome handler — naye member ka welcome, language selection button,
 aur join requests ko automatically accept karna (Force Join System se pehle).
 """
  
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatJoinRequestHandler
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
  
 import database as db
@@ -70,4 +70,3 @@ async def language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     code = query.data.replace("setlang_", "")
     db.set_user_language(query.from_user.id, code)
     await query.answer(t(code, "language_set"))
- 
