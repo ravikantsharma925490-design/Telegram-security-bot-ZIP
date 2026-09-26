@@ -52,7 +52,7 @@ async def media_moderation_check(update: Update, context: ContextTypes.DEFAULT_T
     if await is_authorized_admin(chat.id, user.id, context=context):
         return True
  
-    lang = group["default_language"]
+    lang = db.get_effective_language(chat.id, user.id)
  
     # File download karke check_media_safety() ko diya ja sakta hai:
     # file = await context.bot.get_file(message.photo[-1].file_id)
@@ -71,4 +71,3 @@ async def media_moderation_check(update: Update, context: ContextTypes.DEFAULT_T
         return False
  
     return True
- 
