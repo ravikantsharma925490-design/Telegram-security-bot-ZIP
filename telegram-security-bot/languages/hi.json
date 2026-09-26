@@ -2,7 +2,7 @@
   "welcome": "👋 Group mein swagat hai, {name}!\n\n🌐 Neeche apni language chuniye.",
   "choose_language": "🌐 Apni language chuniye:",
   "language_set": "✅ Language Hindi set ho gayi.",
-  "help": "🆘 *Bot Help*\n\n▶️ /start — Group mein bot setup karein\n⚙️ /settings — Settings kholein (sirf admins)\n🆘 /help — Ye message dikhayein\n\n🛡️ Security: anti-spam, flood protection, bad-word filter, 18+ media protection\n📢 Force Join: members ko required channel/group join karna hoga\n⚠️ Warning system: baar-baar violation par mute/block\n🌍 Multi-language support",
+  "help": "🆘 *Bot Help*\n\n▶️ /start — Group mein bot setup karein\n⚙️ /settings — Settings kholein (sirf admins)\n🌐 /setlanguage <code> — Group ki default language set karein (sirf admins)\n🗣️ /language — Apni personal language choose karein\n🆘 /help — Ye message dikhayein\n\n🛡️ Security: anti-spam, flood protection, bad-word filter, 18+ media protection\n📢 Force Join: members ko required channel/group join karna hoga\n⚠️ Warning system: baar-baar violation par mute/block\n🌍 Multi-language support",
   "setup_start": "🚀 Group ke liye bot setup ho raha hai...",
   "setup_need_admin": "🔐 Pehle mujhe *admin* banayein, delete messages, ban aur restrict users ki permission ke saath.",
   "setup_done": "✅ Setup complete! Main active hoon aur is group ko protect kar raha hoon.\n👑 Owner: {owner}",
