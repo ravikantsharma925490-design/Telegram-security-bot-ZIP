@@ -6,6 +6,7 @@ karne ki zaroorat nahi.
 """
  
 import os
+from datetime import datetime, timedelta
  
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
@@ -19,13 +20,25 @@ _WELCOME_IMAGE_PATH = os.path.join(
 )
  
  
+def _current_greeting() -> str:
+    """Abhi ke time (IST) ke hisaab se Good Morning/Afternoon/Evening return karta hai."""
+    ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
+    hour = ist_now.hour
+    if hour < 12:
+        return "GOOD MORNING"
+    elif hour < 17:
+        return "GOOD AFTERNOON"
+    else:
+        return "GOOD EVENING"
+ 
+ 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     user = update.effective_user
  
     if chat.type == "private":
         lang = db.get_user_language(user.id)
-        caption = t(lang, "private_welcome")
+        caption = t(lang, "private_welcome", name=user.full_name, greeting=_current_greeting())
         buttons = InlineKeyboardMarkup([
             [InlineKeyboardButton("➕ Add me to a group", url=f"https://t.me/{context.bot.username}?startgroup=true")]
         ])
