@@ -21,15 +21,17 @@ _WELCOME_IMAGE_PATH = os.path.join(
  
  
 def _current_greeting() -> str:
-    """Abhi ke time (IST) ke hisaab se Good Morning/Afternoon/Evening return karta hai."""
+    """Abhi ke time (IST) ke hisaab se Good Morning/Afternoon/Evening/Night return karta hai."""
     ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
     hour = ist_now.hour
-    if hour < 12:
+    if 5 <= hour < 12:
         return "GOOD MORNING"
-    elif hour < 17:
+    elif 12 <= hour < 17:
         return "GOOD AFTERNOON"
-    else:
+    elif 17 <= hour < 21:
         return "GOOD EVENING"
+    else:
+        return "GOOD NIGHT"
  
  
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
