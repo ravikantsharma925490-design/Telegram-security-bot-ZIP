@@ -89,3 +89,47 @@ async def setlanguage_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     db.update_group(chat.id, default_language=code)
     await update.message.reply_text(f"✅ Group's default language set to {LANGUAGE_NAMES[code]}.")
  
+ 
+async def setlogchat_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    /setlogchat — group ke logs kis chat mein bhejne hain wo set karta hai.
+    Log channel/group se ek message forward karke, us par reply karte hue ye
+    command target group mein bhejein — ya seedha /setlogchat <chat_id> use
+    karein. Bot us log channel/group mein bhi hona chahiye (admin ke saath,
+    taaki wahan message bhej sake). Sirf owner/authorized admin use kar sakta hai.
+    """
+    chat = update.effective_chat
+    if not await guard_or_warn(update, context, "can_settings"):
+        return
+ 
+    replied = update.message.reply_to_message
+    log_chat_id = None
+    if replied and replied.forward_from_chat:
+        log_chat_id = replied.forward_from_chat.id
+    elif context.args:
+        try:
+            log_chat_id = int(context.args[0])
+        except ValueError:
+            log_chat_id = None
+ 
+    if log_chat_id is None:
+        await update.message.reply_text(
+            "ℹ️ Log channel/group se ek message forward karke us par reply karte "
+            "hue ye command bhejein, ya seedha `/setlogchat <chat_id>` use karein.\n"
+            "Bot us log channel/group mein bhi hona chahiye."
+        )
+        return
+ 
+    try:
+        await context.bot.send_message(log_chat_id, "✅ Ye chat ab is group ke security logs receive karega.")
+    except Exception:
+        await update.message.reply_text(
+            "⚠️ Us chat ko message bhej nahi paya — check karein bot wahan add hai "
+            "aur usse message bhejne ki permission hai."
+        )
+        return
+ 
+    db.update_group(chat.id, log_chat_id=log_chat_id)
+    await update.message.reply_text("✅ Log chat set ho gaya hai. Ab yahan ke saare alerts wahan jayenge.")
+ 
+ 
