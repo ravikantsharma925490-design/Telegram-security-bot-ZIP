@@ -42,3 +42,32 @@ def t(lang_code, key, **kwargs):
         return text
  
  
+_BOLD_MAP = {}
+for _i, _c in enumerate("ABCDEFGHIJKLMNOPQRSTUVWXYZ"):
+    _BOLD_MAP[_c] = chr(0x1D400 + _i)          # 𝐀-𝐙
+for _i, _c in enumerate("abcdefghijklmnopqrstuvwxyz"):
+    _BOLD_MAP[_c] = chr(0x1D41A + _i)          # 𝐚-𝐳
+for _i, _c in enumerate("0123456789"):
+    _BOLD_MAP[_c] = chr(0x1D7CE + _i)          # 𝟎-𝟗
+ 
+ 
+def bold_name(name: str) -> str:
+    """Naam ko Unicode Mathematical Bold style mein convert karta hai (jaise 𝐑𝐚𝐯𝐢).
+    Jo characters is style mein available nahi hain (emoji, special symbols,
+    non-Latin scripts) unhe waisa hi rehne deta hai."""
+    return "".join(_BOLD_MAP.get(ch, ch) for ch in name)
+ 
+ 
+def time_greeting() -> str:
+    """Server ke current time ke hisaab se 'Good Morning/Afternoon/Evening/Night' return karta hai."""
+    import datetime
+    hour = datetime.datetime.now().hour
+    if 5 <= hour < 12:
+        return "GOOD MORNING"
+    if 12 <= hour < 17:
+        return "GOOD AFTERNOON"
+    if 17 <= hour < 21:
+        return "GOOD EVENING"
+    return "GOOD NIGHT"
+ 
+ 
