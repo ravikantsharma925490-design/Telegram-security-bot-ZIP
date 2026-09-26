@@ -1,4 +1,3 @@
-
 """
 Main entry point — bot yahan se start hota hai. Sab handlers yaha register hote hain.
  
@@ -96,7 +95,6 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("settings", settings_command))
     app.add_handler(CommandHandler("setlanguage", setlanguage_command))
-    app.add_handler(CommandHandler("language", language_command))
  
     # Admin commands
     app.add_handler(CommandHandler("addadmin", add_admin_command))
@@ -130,3 +128,4 @@ def main():
  
 if __name__ == "__main__":
     main()
+ 
