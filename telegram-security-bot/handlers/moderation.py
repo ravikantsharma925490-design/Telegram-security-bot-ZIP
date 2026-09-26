@@ -18,11 +18,35 @@ from config import FLOOD_MESSAGE_LIMIT, FLOOD_TIME_WINDOW, LINK_SPAM_RESTRICT_DA
 # In-memory flood tracker: {(chat_id, user_id): [timestamps]}
 _message_times = defaultdict(list)
  
-# Basic bad-word list — zaroorat ke hisaab se aap apni list add kar sakte hain
+# Bad-word list — common Hindi/Urdu aur English gaaliyan + unke common spelling
+# variations (taaki log thoda spelling badal kar bhi bypass na kar sakein).
+# Zaroorat ke hisaab se aage aur words add/remove kar sakte hain.
 BAD_WORDS = {
-    "madarchod", "behenchod", "bhenchod", "chutiya", "randi", "gandu",
-    "fuck", "fucking", "bitch", "asshole", "bastard",
+    # Hindi/Urdu — madarchod
+    "madarchod", "madarchodd", "mc", "mderchod", "madrchod", "matarchod",
+    # behenchod / bhenchod
+    "behenchod", "bhenchod", "bc", "bhenchodd", "bahenchod", "bhosdike",
+    "bhosdiwala", "bhosda", "bhosdi",
+    # chutiya / chutiyapa
+    "chutiya", "chutiye", "chutiyapa", "chutya", "chutmarike",
+    # randi / raand
+    "randi", "randy", "raand", "randwa", "randibaaz",
+    # gandu / gaand
+    "gandu", "gaand", "gand", "gandmasti", "gaandu",
+    # lund / lauda
+    "lund", "lauda", "laude", "lawda", "loda", "lodu",
+    # chodu / chod
+    "chod", "chodu", "chodna", "chudai", "chuda",
+    # harami / kutta / saala etc.
+    "harami", "haraami", "kutta", "kutti", "saala", "saali", "kamina",
+    "kaminey", "kamine",
+    # English profanity
+    "fuck", "fucking", "fucker", "fuk", "fck", "fuckin", "motherfucker",
+    "bitch", "bitches", "asshole", "ass", "bastard", "bastards", "slut",
+    "whore", "dick", "dickhead", "pussy", "cunt", "shit", "shitty",
+    "damn", "piss", "nigger", "nigga",
 }
+ 
  
  
 def _contains_bad_word(text: str) -> bool:
