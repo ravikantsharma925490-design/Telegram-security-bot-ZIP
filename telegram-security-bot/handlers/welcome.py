@@ -52,7 +52,7 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if member.is_bot:
             continue
         text = t(lang, "welcome", name=member.full_name)
-        await update.message.reply_text(text, reply_markup=_language_keyboard())
+        await update.message.reply_text(text)
         await send_log(context, chat.id, t(lang, "log_user_joined", name=member.full_name))
  
  
