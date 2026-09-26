@@ -1,0 +1,52 @@
+# Ye file bad-word filter ki list hai.
+# Har line mein ek word likho (bina number ya comma ke).
+# Line ke shuru mein # lagane se wo line ignore ho jati hai (comment).
+# Naya word add karna ho to bas nayi line mein likh do, phir bot restart karo.
+ 
+madarchod
+madharchod
+mc
+behenchod
+bhenchod
+bc
+chutiya
+chutia
+chuthiya
+randi
+randy
+gandu
+gaandu
+harami
+haraami
+kutta
+kutte
+kamina
+kamine
+saala
+saali
+chodu
+lund
+loda
+lauda
+laude
+gaand
+gand
+jhant
+jhaant
+raand
+bhosdi
+bhosdike
+bhosda
+fuck
+fucking
+fucker
+fck
+bitch
+asshole
+bastard
+slut
+whore
+dick
+pussy
+motherfucker
+ 
