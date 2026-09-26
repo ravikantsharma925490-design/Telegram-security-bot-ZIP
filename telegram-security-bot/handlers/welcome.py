@@ -65,8 +65,24 @@ async def member_left(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_log(context, chat.id, t(lang, "log_user_left", name=left_member.full_name))
  
  
+async def language_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Koi bhi user kabhi bhi /language bhej kar apni pasand ki language choose kar sakta hai."""
+    await update.message.reply_text(
+        t(db.get_user_language(update.effective_user.id), "choose_language"),
+        reply_markup=_language_keyboard(),
+    )
+ 
+ 
 async def language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    user = query.from_user
     code = query.data.replace("setlang_", "")
-    db.set_user_language(query.from_user.id, code)
+    db.set_user_language(user.id, code)
     await query.answer(t(code, "language_set"))
+ 
+    # Message ka text turant chuni gayi language ke confirmation se badal do,
+    # taaki user ko visibly confirm ho ki language change ho gayi hai.
+    try:
+        await query.edit_message_text(t(code, "language_set"), reply_markup=_language_keyboard())
+    except Exception:
+        pass
