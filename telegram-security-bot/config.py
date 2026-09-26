@@ -32,3 +32,12 @@ DEFAULT_REQUIRED_GROUP = "english_chatting_USA18"
  
 # Link/username spam bhejne par kitne din ke liye restrict karna hai
 LINK_SPAM_RESTRICT_DAYS = 3
+ 
+# Bot ki personal/DM chat me /start karne par ye welcome image bheji jaati hai.
+# Yaha koi bhi public image URL, ya Telegram file_id (jo ek baar bot ko photo
+# bhejkar update.message.photo[-1].file_id se milta hai), daal sakte ho.
+WELCOME_IMAGE = os.environ.get(
+    "WELCOME_IMAGE",
+    "https://raw.githubusercontent.com/ravikantsharma925490-design/Telegram-security-bot-ZIP/main/images/welcome.jpg",
+)
+ 
