@@ -85,3 +85,4 @@ async def verify_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await query.answer(t(lang, "verify_fail"), show_alert=True)
  
+ 
