@@ -70,11 +70,14 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
  
     # 2) Flood protection
     if group["flood_protection"] and _is_flooding(chat.id, user.id):
+        until = int(time.time()) + group["mute_duration"]
         try:
             await context.bot.restrict_chat_member(
                 chat.id, user.id,
-                permissions=None,  # library default restricts sending; explicit below
+                permissions=ChatPermissions(can_send_messages=False),
+                until_date=until,
             )
+            db.block_user(chat.id, user.id, group["mute_duration"])
         except Exception:
             pass
         await context.bot.send_message(chat.id, t(lang, "flood_muted", name=user.full_name))
@@ -102,12 +105,15 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 pass
             db.block_user(chat.id, user.id, restrict_seconds)
  
-            await context.bot.send_message(
-                chat.id,
-                f"{t(lang, 'spam_deleted')}\n🚫 {user.full_name} link/username bhejne ki wajah se {LINK_SPAM_RESTRICT_DAYS} din ke liye restrict kar diya gaya hai.",
+            spam_text = (
+                t(lang, "spam_deleted")
+                + "\n"
+                + t(lang, "spam_restricted", name=user.full_name, days=LINK_SPAM_RESTRICT_DAYS)
             )
+            await context.bot.send_message(chat.id, spam_text)
             await send_log(context, chat.id, t(lang, "log_spam", name=user.full_name))
             return False
  
     return True
+ 
  
