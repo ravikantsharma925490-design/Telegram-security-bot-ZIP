@@ -22,7 +22,7 @@ import database as db
 from config import BOT_TOKEN
  
 from handlers.setup import start_command, help_command, get_file_id_command
-from handlers.settings import settings_command, settings_toggle_callback, setlanguage_command, setlogchat_command
+from handlers.settings import settings_command, settings_toggle_callback, setlanguage_command
 from handlers.admin import add_admin_command, remove_admin_command, ban_command, unban_command, mute_command, warn_command
 from handlers.welcome import auto_accept_join_request, welcome_new_member, member_left, language_callback, language_command
 from handlers.force_join import force_join_check, verify_callback
@@ -93,10 +93,9 @@ def main():
     # Core commands
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("getfileid", get_file_id_command))
     app.add_handler(CommandHandler("settings", settings_command))
     app.add_handler(CommandHandler("setlanguage", setlanguage_command))
-    app.add_handler(CommandHandler("setlogchat", setlogchat_command))
-    app.add_handler(CommandHandler("language", language_command))
  
     # Admin commands
     app.add_handler(CommandHandler("addadmin", add_admin_command))
@@ -112,9 +111,6 @@ def main():
     # New member / left member
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_new_member))
     app.add_handler(MessageHandler(filters.StatusUpdate.LEFT_CHAT_MEMBER, member_left))
- 
-    # Private chat mein photo bhejo to file_id reply karega (WELCOME_IMAGE set karne ke liye)
-    app.add_handler(MessageHandler(filters.PHOTO & filters.ChatType.PRIVATE, get_file_id_command))
  
     # Normal group messages -> force join + moderation + media checks
     app.add_handler(MessageHandler(
@@ -133,5 +129,4 @@ def main():
  
 if __name__ == "__main__":
     main()
- 
  
