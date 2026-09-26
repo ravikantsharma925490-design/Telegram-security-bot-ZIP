@@ -31,16 +31,14 @@ def _load(lang_code):
  
  
 def t(lang_code, key, **kwargs):
-    """
-    Text nikalta hai. Abhi ke liye bot poora English mein force kiya gaya hai —
-    isliye lang_code ko ignore karke hamesha 'en' use karta hai. Future mein
-    agar dobara multi-language chalu karna ho, to neeche wali line
-    (data = _load(lang_code)) wapas use kar lena.
-    """
-    data = _load("en")
-    text = data.get(key, key)
+    """Text nikalta hai us language mein jo di gayi hai; missing key/language par English fallback."""
+    data = _load(lang_code or "en")
+    text = data.get(key)
+    if text is None:
+        text = _load("en").get(key, key)
     try:
         return text.format(**kwargs)
     except (KeyError, IndexError):
         return text
+ 
  
