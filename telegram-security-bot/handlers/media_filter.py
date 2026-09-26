@@ -71,3 +71,4 @@ async def media_moderation_check(update: Update, context: ContextTypes.DEFAULT_T
         return False
  
     return True
+ 
