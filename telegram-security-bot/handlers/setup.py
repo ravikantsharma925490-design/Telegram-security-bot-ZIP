@@ -15,9 +15,20 @@ from telegram.constants import ParseMode
 import database as db
 from utils.lang import t
  
-_WELCOME_IMAGE_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "images", "welcome.jpg"
-)
+_PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # telegram-security-bot/
+_REPO_ROOT = os.path.dirname(_PROJECT_DIR)  # repo ka root (telegram-security-bot ke ek level upar)
+ 
+_WELCOME_IMAGE_CANDIDATES = [
+    os.path.join(_PROJECT_DIR, "images", "welcome.jpg"),   # telegram-security-bot/images/welcome.jpg
+    os.path.join(_REPO_ROOT, "images", "welcome.jpg"),      # images/welcome.jpg (repo root)
+]
+ 
+ 
+def _find_welcome_image():
+    for path in _WELCOME_IMAGE_CANDIDATES:
+        if os.path.exists(path):
+            return path
+    return None
  
  
 def _current_greeting() -> str:
@@ -44,8 +55,9 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         buttons = InlineKeyboardMarkup([
             [InlineKeyboardButton("➕ Add me to a group", url=f"https://t.me/{context.bot.username}?startgroup=true")]
         ])
-        if os.path.exists(_WELCOME_IMAGE_PATH):
-            with open(_WELCOME_IMAGE_PATH, "rb") as photo:
+        image_path = _find_welcome_image()
+        if image_path:
+            with open(image_path, "rb") as photo:
                 await update.message.reply_photo(
                     photo=photo, caption=caption, parse_mode=ParseMode.MARKDOWN, reply_markup=buttons
                 )
