@@ -86,3 +86,4 @@ async def language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(t(code, "language_set"), reply_markup=_language_keyboard())
     except Exception:
         pass
+ 
