@@ -75,3 +75,32 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         lang = db.get_group(chat.id)["default_language"]
     await update.message.reply_text(t(lang, "help"), parse_mode=ParseMode.MARKDOWN)
  
+ 
+async def get_file_id_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Utility command — kisi photo/video/document par reply karke /getfileid bhejo,
+    bot uska Telegram file_id bata dega. Ye file_id repo mein image rakhne ke
+    bajaye seedha config/language files mein use kiya ja sakta hai.
+    """
+    message = update.message
+    if not message.reply_to_message:
+        await message.reply_text("↩️ Kisi photo/video/document par reply karke /getfileid bhejo.")
+        return
+ 
+    target = message.reply_to_message
+    file_id = None
+    if target.photo:
+        file_id = target.photo[-1].file_id
+    elif target.video:
+        file_id = target.video.file_id
+    elif target.document:
+        file_id = target.document.file_id
+    elif target.animation:
+        file_id = target.animation.file_id
+ 
+    if not file_id:
+        await message.reply_text("❌ Is message mein koi photo/video/document nahi mila.")
+        return
+ 
+    await message.reply_text(f"📎 File ID:\n`{file_id}`", parse_mode=ParseMode.MARKDOWN)
+ 
