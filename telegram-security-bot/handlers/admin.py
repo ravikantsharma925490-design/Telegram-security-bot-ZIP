@@ -145,7 +145,7 @@ async def _issue_warning(update: Update, context: ContextTypes.DEFAULT_TYPE, tar
     """Central warning function — moderation.py bhi ise use karta hai."""
     chat = update.effective_chat
     group = db.get_group(chat.id)
-    lang = group["default_language"]
+    lang = db.get_effective_language(chat.id, target.id)  # target user ki apni language
     count = db.add_warning(chat.id, target.id)
     limit = group["warning_limit"]
  
@@ -158,3 +158,4 @@ async def _issue_warning(update: Update, context: ContextTypes.DEFAULT_TYPE, tar
         db.reset_warnings(chat.id, target.id)
         await update.message.reply_text(t(lang, "warning_limit_reached", name=target.full_name))
         await send_log(context, chat.id, t(lang, "log_mute", name=target.full_name))
+ 
