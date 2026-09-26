@@ -5,12 +5,14 @@ Ek baar setup hone ke baad bot automatically active rehta hai, dobara /start
 karne ki zaroorat nahi.
 """
  
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
+import html
  
 import database as db
-from utils.lang import t
+from utils.lang import t, bold_name, time_greeting
+from config import WELCOME_IMAGE
  
  
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -19,7 +21,26 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
  
     if chat.type == "private":
         lang = db.get_user_language(user.id)
-        await update.message.reply_text(t(lang, "help"), parse_mode=ParseMode.MARKDOWN)
+        styled_name = html.escape(bold_name(user.first_name or "Friend"))
+        caption = (
+            "🚩 <u><b>JAI SHRI RAM</b></u> 🚩\n\n"
+            f"HEY {styled_name}, {time_greeting()}\n\n"
+            f"{html.escape(t(lang, 'private_welcome'))}"
+        )
+        keyboard = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("➕ Add Me To Your Group", url=f"https://t.me/{context.bot.username}?startgroup=true")]]
+        )
+        try:
+            await update.message.reply_photo(
+                photo=WELCOME_IMAGE,
+                caption=caption,
+                parse_mode=ParseMode.HTML,
+                reply_markup=keyboard,
+            )
+        except Exception:
+            # Agar WELCOME_IMAGE abhi tak placeholder/invalid hai, to sirf
+            # text hi bhej do taaki bot crash na ho.
+            await update.message.reply_text(caption, parse_mode=ParseMode.HTML, reply_markup=keyboard)
         return
  
     group = db.get_group(chat.id)
