@@ -80,3 +80,19 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         lang = db.get_group(chat.id)["default_language"]
     await update.message.reply_text(t(lang, "help"), parse_mode=ParseMode.MARKDOWN)
  
+ 
+async def get_file_id_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Bot ki private chat mein koi bhi photo bhejo, ye uska file_id reply kar
+    dega — usko copy karke config.py/Render env ke WELCOME_IMAGE mein daal do.
+    """
+    chat = update.effective_chat
+    if chat.type != "private" or not update.message.photo:
+        return
+    file_id = update.message.photo[-1].file_id
+    await update.message.reply_text(
+        "✅ Is photo ka file_id ye hai — ise copy karke `WELCOME_IMAGE` mein daal do:\n\n"
+        f"`{file_id}`",
+        parse_mode=ParseMode.MARKDOWN,
+    )
+ 
