@@ -2,7 +2,7 @@
   "welcome": "👋 Welcome to the group, {name}!\n\n🌐 Please choose your language below.",
   "choose_language": "🌐 Choose your language:",
   "language_set": "✅ Language set to English.",
-  "help": "🆘 *Bot Help*\n\n▶️ /start — Setup the bot in this group\n⚙️ /settings — Open settings (admins only)\n🆘 /help — Show this message\n\n🛡️ Security: anti-spam, flood protection, bad-word filter, 18+ media protection\n📢 Force Join: members must join the required channel/group\n⚠️ Warning system: repeated violations lead to mute/block\n🌍 Multi-language support",
+  "help": "🆘 *Bot Help*\n\n▶️ /start — Setup the bot in this group\n⚙️ /settings — Open settings (admins only)\n🌐 /setlanguage <code> — Set the group's default language (admins only)\n🗣️ /language — Choose your own personal language\n🆘 /help — Show this message\n\n🛡️ Security: anti-spam, flood protection, bad-word filter, 18+ media protection\n📢 Force Join: members must join the required channel/group\n⚠️ Warning system: repeated violations lead to mute/block\n🌍 Multi-language support",
   "setup_start": "🚀 Setting up the bot for this group...",
   "setup_need_admin": "🔐 Please make me an *admin* first, with permission to delete messages, ban and restrict users.",
   "setup_done": "✅ Setup complete! I'm active and protecting this group.\n👑 Owner: {owner}",
