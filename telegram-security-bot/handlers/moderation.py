@@ -126,7 +126,7 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
  
             await context.bot.send_message(
                 chat.id,
-                f"{t(lang, 'spam_deleted')}\n🚫 {user.full_name} link/username bhejne ki wajah se {LINK_SPAM_RESTRICT_DAYS} din ke liye restrict kar diya gaya hai.",
+                f"{t(lang, 'spam_deleted')}\n🚫 {user.full_name} has been restricted for {LINK_SPAM_RESTRICT_DAYS} days for sending a link/username.",
             )
             await send_log(context, chat.id, t(lang, "log_spam", name=user.full_name))
             return False
