@@ -67,7 +67,7 @@ async def add_admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await guard_or_warn(update, context, "can_settings"):
         return
     if not update.message.reply_to_message:
-        await update.message.reply_text("↩️ Kisi user ke message par reply karke ye command bhejein.")
+        await update.message.reply_text("↩️ Reply to a user's message to use this command.")
         return
  
     target = update.message.reply_to_message.from_user
@@ -82,7 +82,7 @@ async def remove_admin_command(update: Update, context: ContextTypes.DEFAULT_TYP
     if not await guard_or_warn(update, context, "can_settings"):
         return
     if not update.message.reply_to_message:
-        await update.message.reply_text("↩️ Kisi user ke message par reply karke ye command bhejein.")
+        await update.message.reply_text("↩️ Reply to a user's message to use this command.")
         return
  
     target = update.message.reply_to_message.from_user
