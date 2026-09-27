@@ -111,7 +111,7 @@ async def get_file_id_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     """
     message = update.message
     if not message.reply_to_message:
-        await message.reply_text("↩️ Kisi photo/video/document par reply karke /getfileid bhejo.")
+        await message.reply_text("↩️ Reply to a photo/video/document with /getfileid.")
         return
  
     target = message.reply_to_message
