@@ -14,8 +14,9 @@ from handlers.logger import send_log
 async def _is_member(context: ContextTypes.DEFAULT_TYPE, channel_username: str, user_id: int) -> bool:
     if not channel_username:
         return True
+    username = channel_username if channel_username.startswith("@") else f"@{channel_username}"
     try:
-        member = await context.bot.get_chat_member(channel_username, user_id)
+        member = await context.bot.get_chat_member(username, user_id)
         return member.status in ("member", "administrator", "creator")
     except Exception:
         # Bot us channel/group mein admin nahi hai ya username galat hai
@@ -84,5 +85,4 @@ async def verify_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_log(context, chat.id, t(lang, "log_force_join_verified", name=user.full_name))
     else:
         await query.answer(t(lang, "verify_fail"), show_alert=True)
- 
  
