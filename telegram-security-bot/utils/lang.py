@@ -31,46 +31,15 @@ def _load(lang_code):
  
  
 def t(lang_code, key, **kwargs):
-    """Text nikalta hai us language mein jo di gayi hai; missing key/language par English fallback."""
-    data = _load(lang_code or "en")
-    text = data.get(key)
-    if text is None:
-        text = _load("en").get(key, key)
+    """
+    Text nikalta hai. Abhi ke liye bot poora English mein force kiya gaya hai —
+    isliye lang_code ko ignore karke hamesha 'en' use karta hai. Future mein
+    agar dobara multi-language chalu karna ho, to neeche wali line
+    (data = _load(lang_code)) wapas use kar lena.
+    """
+    data = _load("en")
+    text = data.get(key, key)
     try:
         return text.format(**kwargs)
     except (KeyError, IndexError):
         return text
- 
- 
-_BOLD_MAP = {}
-for _i, _c in enumerate("ABCDEFGHIJKLMNOPQRSTUVWXYZ"):
-    _BOLD_MAP[_c] = chr(0x1D400 + _i)          # 𝐀-𝐙
-for _i, _c in enumerate("abcdefghijklmnopqrstuvwxyz"):
-    _BOLD_MAP[_c] = chr(0x1D41A + _i)          # 𝐚-𝐳
-for _i, _c in enumerate("0123456789"):
-    _BOLD_MAP[_c] = chr(0x1D7CE + _i)          # 𝟎-𝟗
- 
- 
-def bold_name(name: str) -> str:
-    """Naam ko Unicode Mathematical Bold style mein convert karta hai (jaise 𝐑𝐚𝐯𝐢).
-    Jo characters is style mein available nahi hain (emoji, special symbols,
-    non-Latin scripts) unhe waisa hi rehne deta hai."""
-    return "".join(_BOLD_MAP.get(ch, ch) for ch in name)
- 
- 
-def time_greeting() -> str:
-    """India (IST, UTC+5:30) ke current time ke hisaab se
-    'Good Morning/Afternoon/Evening/Night' return karta hai — server chahe
-    kisi bhi country mein ho (Render UTC use karta hai), IST hi count hoga."""
-    import datetime
-    ist = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
-    hour = datetime.datetime.now(ist).hour
-    if 5 <= hour < 12:
-        return "GOOD MORNING"
-    if 12 <= hour < 17:
-        return "GOOD AFTERNOON"
-    if 17 <= hour < 21:
-        return "GOOD EVENING"
-    return "GOOD NIGHT"
- 
- 
