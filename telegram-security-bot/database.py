@@ -160,3 +160,32 @@ def is_blocked(chat_id, user_id):
         return False
     return True
  
+ 
+ 
+# ---------- Owner stats helpers ----------
+ 
+def incr_stat(name, amount=1):
+    """Global counter badhata hai (spam_deleted, bans, warnings)."""
+    _db.stats.update_one({"name": name}, {"$inc": {"value": amount}}, upsert=True)
+ 
+ 
+def _get_stat(name):
+    doc = _db.stats.find_one({"name": name})
+    return doc["value"] if doc else 0
+ 
+ 
+def list_group_ids():
+    """Sirf real groups/supergroups (Telegram me inki chat id negative hoti hai)."""
+    return [d["chat_id"] for d in _db.groups.find({"chat_id": {"$lt": 0}}, {"chat_id": 1})]
+ 
+ 
+def get_stats():
+    return {
+        "groups": _db.groups.count_documents({"chat_id": {"$lt": 0}}),
+        "groups_setup": _db.groups.count_documents({"chat_id": {"$lt": 0}, "setup_done": 1}),
+        "users": _db.user_prefs.count_documents({}),
+        "spam_deleted": _get_stat("spam_deleted"),
+        "bans": _get_stat("bans"),
+        "warnings": _get_stat("warnings"),
+    }
+ 
