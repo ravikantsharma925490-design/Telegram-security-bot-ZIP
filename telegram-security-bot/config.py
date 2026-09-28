@@ -27,8 +27,8 @@ FLOOD_MESSAGE_LIMIT = 5
 FLOOD_TIME_WINDOW = 10  # seconds
  
 # Force Join ke liye default required channel/group (owner ne diya)
-DEFAULT_REQUIRED_CHANNEL = "cinemagyanupdates"
-DEFAULT_REQUIRED_GROUP = "english_chatting_USA18"
+DEFAULT_REQUIRED_CHANNEL = ""
+DEFAULT_REQUIRED_GROUP = ""
  
 # Link/username spam bhejne par kitne din ke liye restrict karna hai
 LINK_SPAM_RESTRICT_DAYS = 3
