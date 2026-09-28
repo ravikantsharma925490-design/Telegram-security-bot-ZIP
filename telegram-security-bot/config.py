@@ -41,3 +41,8 @@ WELCOME_IMAGE = os.environ.get(
     "https://raw.githubusercontent.com/ravikantsharma925490-design/Telegram-security-bot-ZIP/main/images/welcome.jpg",
 )
  
+ 
+# Bot ke malik (tumhara) numeric Telegram user ID — /stats aur /groups sirf isse chalenge.
+# Render env mein OWNER_ID naam se daalo (ID @userinfobot se milti hai).
+OWNER_ID = int(os.environ.get("OWNER_ID", "0") or 0)
+ 
