@@ -85,6 +85,7 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             await message.delete()
         except Exception:
             pass
+        db.incr_stat("spam_deleted")
         await context.bot.send_message(chat.id, t(lang, "bad_word_deleted"))
         await send_log(context, chat.id, t(lang, "log_bad_word", name=user.full_name))
         await _issue_warning(update, context, user, "bad language")
@@ -123,6 +124,7 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             except Exception:
                 pass
             db.block_user(chat.id, user.id, restrict_seconds)
+            db.incr_stat("spam_deleted")
  
             await context.bot.send_message(
                 chat.id,
@@ -132,4 +134,5 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             return False
  
     return True
+ 
  
