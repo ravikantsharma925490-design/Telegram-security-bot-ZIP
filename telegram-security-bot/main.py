@@ -23,11 +23,12 @@ from config import BOT_TOKEN
  
 from handlers.setup import start_command, help_command, get_file_id_command
 from handlers.settings import settings_command, settings_toggle_callback, setlanguage_command
-from handlers.admin import add_admin_command, remove_admin_command, ban_command, unban_command, mute_command, warn_command
+from handlers.admin import add_admin_command, remove_admin_command, ban_command, unban_command, mute_command, unmute_command, warn_command
 from handlers.welcome import auto_accept_join_request, welcome_new_member, member_left, language_callback, language_command
 from handlers.force_join import force_join_check, verify_callback
 from handlers.moderation import moderation_check
 from handlers.media_filter import media_moderation_check
+from handlers.owner import stats_command, groups_command
  
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -103,7 +104,12 @@ def main():
     app.add_handler(CommandHandler("ban", ban_command))
     app.add_handler(CommandHandler("unban", unban_command))
     app.add_handler(CommandHandler("mute", mute_command))
+    app.add_handler(CommandHandler("unmute", unmute_command))
     app.add_handler(CommandHandler("warn", warn_command))
+ 
+    # Bot-owner commands (sirf OWNER_ID)
+    app.add_handler(CommandHandler("stats", stats_command))
+    app.add_handler(CommandHandler("groups", groups_command))
  
     # Join requests (auto accept)
     app.add_handler(ChatJoinRequestHandler(auto_accept_join_request))
@@ -129,4 +135,5 @@ def main():
  
 if __name__ == "__main__":
     main()
+ 
  
