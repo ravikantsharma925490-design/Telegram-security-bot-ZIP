@@ -48,6 +48,10 @@ def init_db():
     _db.warnings.create_index([("chat_id", 1), ("user_id", 1)], unique=True)
     _db.blocked_users.create_index([("chat_id", 1), ("user_id", 1)], unique=True)
  
+    # Force Join band karne ke liye: purane saved groups ke channel/group username khaali karo.
+    # (Kaam ho jaane ke baad ye line hata sakte ho.)
+    _db.groups.update_many({}, {"$set": {"required_channel": "", "required_group": ""}})
+ 
  
 # ---------- Group config helpers ----------
  
@@ -159,7 +163,6 @@ def is_blocked(chat_id, user_id):
         _db.blocked_users.delete_one({"chat_id": chat_id, "user_id": user_id})
         return False
     return True
- 
  
  
 # ---------- Owner stats helpers ----------
