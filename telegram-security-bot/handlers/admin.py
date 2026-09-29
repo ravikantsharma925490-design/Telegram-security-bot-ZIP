@@ -49,23 +49,34 @@ async def is_authorized_admin(chat_id: int, user_id: int, permission: str = None
     return False
  
  
+async def _require_mention(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """
+    Group mein kai bots ho sakte hain jinke paas same-naam commands (/ban, /mute wagairah)
+    hote hain. Bina @mention ke Telegram sab bots ko trigger kar deta hai, isliye
+    admin commands ke liye bot ka @username mention karna zaroori hai.
+    True = mention sahi hai (ya private chat hai). False = mention missing, already reply bhej diya.
+    """
+    chat = update.effective_chat
+    if chat.type == "private":
+        return True
+    bot_username = (context.bot.username or "").lower()
+    text = (update.message.text or "") if update.message else ""
+    if bot_username and f"@{bot_username}" not in text.lower():
+        await update.message.reply_text(
+            f"ℹ️ Please mention me to use this command — e.g. `/ban@{context.bot.username}`.",
+            parse_mode="Markdown",
+        )
+        return False
+    return True
+ 
+ 
 async def guard_or_warn(update: Update, context: ContextTypes.DEFAULT_TYPE, permission: str = None) -> bool:
     """True return karta hai agar user authorized hai. Warna warning bhej kar False return karta hai."""
     chat = update.effective_chat
     user = update.effective_user
  
-    # Group mein kai bots ho sakte hain jinke paas same-naam commands (/ban, /mute wagairah)
-    # hote hain. Bina @mention ke Telegram sab bots ko trigger kar deta hai, isliye
-    # admin commands ke liye bot ka @username mention karna zaroori hai.
-    if chat.type != "private":
-        bot_username = (context.bot.username or "").lower()
-        text = (update.message.text or "") if update.message else ""
-        if bot_username and f"@{bot_username}" not in text.lower():
-            await update.message.reply_text(
-                f"ℹ️ Please mention me to use this command — e.g. `/ban@{context.bot.username}`.",
-                parse_mode="Markdown",
-            )
-            return False
+    if not await _require_mention(update, context):
+        return False
  
     if await is_authorized_admin(chat.id, user.id, permission, context=context):
         return True
@@ -76,11 +87,32 @@ async def guard_or_warn(update: Update, context: ContextTypes.DEFAULT_TYPE, perm
     return False
  
  
+async def owner_guard_or_warn(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """
+    guard_or_warn jaisa hi, lekin ADMINS ko bhi allow nahi karta — sirf group
+    ka OWNER hi True paata hai. /setchannel, /setgroup jaise sensitive
+    commands ke liye use hota hai.
+    """
+    chat = update.effective_chat
+    user = update.effective_user
+ 
+    if not await _require_mention(update, context):
+        return False
+ 
+    if await is_owner(chat.id, user.id):
+        return True
+ 
+    lang = db.get_group(chat.id)["default_language"]
+    await update.message.reply_text("🚫 Only the group owner can use this command.")
+    await send_log(context, chat.id, t(lang, "log_unauthorized_cmd", name=user.full_name))
+    return False
+ 
+ 
 # ---------- Commands ----------
  
 async def add_admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
-    if not await guard_or_warn(update, context, "can_settings"):
+    if not await owner_guard_or_warn(update, context):
         return
     if not update.message.reply_to_message:
         await update.message.reply_text("↩️ Reply to a user's message to use this command.")
@@ -95,7 +127,7 @@ async def add_admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
  
 async def remove_admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
-    if not await guard_or_warn(update, context, "can_settings"):
+    if not await owner_guard_or_warn(update, context):
         return
     if not update.message.reply_to_message:
         await update.message.reply_text("↩️ Reply to a user's message to use this command.")
