@@ -68,24 +68,40 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     group = db.get_group(chat.id)
     lang = group["default_language"]
  
+    # Anonymous admin ho to Telegram asli user nahi dikhata -> owner verify nahi ho sakta
+    if update.message and update.message.sender_chat and update.message.sender_chat.id == chat.id:
+        await update.message.reply_text(
+            "⚠️ Anonymous admin mode ON hai. Owner verify nahi ho pa raha — "
+            "Remain Anonymous OFF karke dobara /start karo."
+        )
+        return
+ 
+    # SIRF group ka asli OWNER /start chala sakta hai.
+    try:
+        member = await chat.get_member(user.id)
+        is_owner = member.status == "creator"
+    except Exception:
+        is_owner = False
+ 
+    if not is_owner:
+        await update.message.reply_text("🚫 Only the group owner can start the bot.")
+        return
+ 
+    db.update_group(chat.id, owner_id=user.id)
+ 
     if group["setup_done"]:
         await update.message.reply_text(t(lang, "already_setup"))
         return
  
     await update.message.reply_text(t(lang, "setup_start"))
  
-    # Bot khud ki admin status check kare
+    # Bot khud admin hai ya nahi check karo
     bot_member = await chat.get_member(context.bot.id)
     if bot_member.status != "administrator":
         await update.message.reply_text(t(lang, "setup_need_admin"))
         return
  
-    # Jisne /start command chalayi (agar chat admin hai) use owner maan lo,
-    # warna group creator ko owner set karna behtar hai.
-    member = await chat.get_member(user.id)
-    is_owner = member.status == "creator"
- 
-    db.update_group(chat.id, owner_id=user.id if is_owner else group["owner_id"], setup_done=1)
+    db.update_group(chat.id, setup_done=1)
  
     await update.message.reply_text(
         t(lang, "setup_done", owner=user.mention_markdown_v2() if hasattr(user, "mention_markdown_v2") else user.full_name),
@@ -131,3 +147,5 @@ async def get_file_id_command(update: Update, context: ContextTypes.DEFAULT_TYPE
  
     await message.reply_text(f"📎 File ID:\n`{file_id}`", parse_mode=ParseMode.MARKDOWN)
  
+ 
+
