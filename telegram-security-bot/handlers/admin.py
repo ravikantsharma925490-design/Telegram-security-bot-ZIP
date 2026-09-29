@@ -13,9 +13,22 @@ from utils.lang import t
 from handlers.logger import send_log
  
  
-async def is_owner(chat_id: int, user_id: int) -> bool:
+async def is_owner(chat_id: int, user_id: int, context: ContextTypes.DEFAULT_TYPE = None) -> bool:
     group = db.get_group(chat_id)
-    return group["owner_id"] == user_id
+    if group["owner_id"] == user_id:
+        return True
+ 
+    # FIX: DB mein owner_id set nahi (ya galat) hai to Telegram se asli
+    # group creator verify karo, aur sahi hone par DB mein save kar lo.
+    if context is not None:
+        try:
+            member = await context.bot.get_chat_member(chat_id, user_id)
+            if member.status == "creator":
+                db.update_group(chat_id, owner_id=user_id)
+                return True
+        except Exception:
+            pass
+    return False
  
  
 async def is_authorized_admin(chat_id: int, user_id: int, permission: str = None, context: ContextTypes.DEFAULT_TYPE = None) -> bool:
@@ -28,7 +41,7 @@ async def is_authorized_admin(chat_id: int, user_id: int, permission: str = None
     Specific permissions (can_ban, can_mute, can_warn, can_settings) ke liye
     sirf owner ya bot ke /addadmin se di gayi permission hi count hoti hai.
     """
-    if await is_owner(chat_id, user_id):
+    if await is_owner(chat_id, user_id, context):
         return True
  
     record = db.get_group_admin(chat_id, user_id)
@@ -99,7 +112,7 @@ async def owner_guard_or_warn(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not await _require_mention(update, context):
         return False
  
-    if await is_owner(chat.id, user.id):
+    if await is_owner(chat.id, user.id, context):
         return True
  
     lang = db.get_group(chat.id)["default_language"]
@@ -308,6 +321,7 @@ async def _issue_warning(update: Update, context: ContextTypes.DEFAULT_TYPE, tar
         db.reset_warnings(chat.id, target.id)
         await context.bot.send_message(chat.id, t(lang, "warning_limit_reached", name=target.full_name))
         await send_log(context, chat.id, t(lang, "log_mute", name=target.full_name))
+ 
  
  
  
