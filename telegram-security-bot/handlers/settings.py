@@ -9,7 +9,7 @@ from telegram.constants import ParseMode
  
 import database as db
 from utils.lang import t
-from handlers.admin import guard_or_warn
+from handlers.admin import guard_or_warn, owner_guard_or_warn
 from utils.lang import LANGUAGE_NAMES
  
 TOGGLE_FIELDS = [
@@ -139,7 +139,7 @@ async def setchannel_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     Example: /setchannel @cinemagyanupdates
     """
     chat = update.effective_chat
-    if not await guard_or_warn(update, context, "can_settings"):
+    if not await owner_guard_or_warn(update, context):
         return
  
     if not context.args:
@@ -160,7 +160,7 @@ async def setgroup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     Example: /setgroup @english_chatting_USA18
     """
     chat = update.effective_chat
-    if not await guard_or_warn(update, context, "can_settings"):
+    if not await owner_guard_or_warn(update, context):
         return
  
     if not context.args:
@@ -173,4 +173,6 @@ async def setgroup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"✅ Required group set to @{username}.\n📢 Force Join is now ON.\n"
         f"⚠️ Make sure I'm an admin in @{username}, otherwise I can't verify members."
     )
+ 
+ 
  
