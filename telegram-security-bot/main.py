@@ -12,7 +12,7 @@ import os
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
  
-from telegram import Update
+from telegram import Update, BotCommand
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler,
     ChatJoinRequestHandler, ContextTypes, filters,
@@ -22,7 +22,7 @@ import database as db
 from config import BOT_TOKEN
  
 from handlers.setup import start_command, help_command, get_file_id_command
-from handlers.settings import settings_command, settings_toggle_callback, setlanguage_command
+from handlers.settings import settings_command, settings_toggle_callback, setlanguage_command, setchannel_command, setgroup_command, setlogchat_command
 from handlers.admin import add_admin_command, remove_admin_command, ban_command, unban_command, mute_command, unmute_command, warn_command
 from handlers.welcome import auto_accept_join_request, welcome_new_member, member_left, language_callback, language_command
 from handlers.force_join import force_join_check, verify_callback
@@ -76,6 +76,33 @@ def _run_dummy_web_server():
     server.serve_forever()
  
  
+async def _post_init(application):
+    """
+    Bot ki command list Telegram ko batata hai, taaki '/' type karte hi
+    description ke saath list dikhe. Agar group mein kai bots hain, to
+    Telegram khud '@BotUsername' add karke alag se dikhata hai jab aap
+    command select karte ho.
+    """
+    await application.bot.set_my_commands([
+        BotCommand("start", "Show bot info / setup in this group"),
+        BotCommand("help", "Show help and available commands"),
+        BotCommand("settings", "Open group settings (admins only)"),
+        BotCommand("setchannel", "Set required channel for Force Join (admins)"),
+        BotCommand("setgroup", "Set required group for Force Join (admins)"),
+        BotCommand("setlanguage", "Set the group's default language (admins)"),
+        BotCommand("setlogchat", "Set the chat for security logs (admins)"),
+        BotCommand("language", "Choose your own personal language"),
+        BotCommand("ban", "Ban a user (reply to their message)"),
+        BotCommand("unban", "Unban a user (reply to their message)"),
+        BotCommand("mute", "Mute a user (reply to their message)"),
+        BotCommand("unmute", "Unmute a user (reply to their message)"),
+        BotCommand("warn", "Warn a user (reply to their message)"),
+        BotCommand("addadmin", "Give a user bot-admin permissions (reply)"),
+        BotCommand("removeadmin", "Remove a user's bot-admin permissions (reply)"),
+        BotCommand("getfileid", "Get the file_id of a photo/video/document (reply)"),
+    ])
+ 
+ 
 def main():
     threading.Thread(target=_run_dummy_web_server, daemon=True).start()
  
@@ -88,6 +115,7 @@ def main():
         .read_timeout(30)
         .get_updates_connect_timeout(30)
         .get_updates_read_timeout(30)
+        .post_init(_post_init)
         .build()
     )
  
@@ -97,6 +125,9 @@ def main():
     app.add_handler(CommandHandler("getfileid", get_file_id_command))
     app.add_handler(CommandHandler("settings", settings_command))
     app.add_handler(CommandHandler("setlanguage", setlanguage_command))
+    app.add_handler(CommandHandler("setchannel", setchannel_command))
+    app.add_handler(CommandHandler("setgroup", setgroup_command))
+    app.add_handler(CommandHandler("setlogchat", setlogchat_command))
  
     # Admin commands
     app.add_handler(CommandHandler("addadmin", add_admin_command))
@@ -135,5 +166,4 @@ def main():
  
 if __name__ == "__main__":
     main()
- 
  
