@@ -53,6 +53,20 @@ async def guard_or_warn(update: Update, context: ContextTypes.DEFAULT_TYPE, perm
     """True return karta hai agar user authorized hai. Warna warning bhej kar False return karta hai."""
     chat = update.effective_chat
     user = update.effective_user
+ 
+    # Group mein kai bots ho sakte hain jinke paas same-naam commands (/ban, /mute wagairah)
+    # hote hain. Bina @mention ke Telegram sab bots ko trigger kar deta hai, isliye
+    # admin commands ke liye bot ka @username mention karna zaroori hai.
+    if chat.type != "private":
+        bot_username = (context.bot.username or "").lower()
+        text = (update.message.text or "") if update.message else ""
+        if bot_username and f"@{bot_username}" not in text.lower():
+            await update.message.reply_text(
+                f"ℹ️ Please mention me to use this command — e.g. `/ban@{context.bot.username}`.",
+                parse_mode="Markdown",
+            )
+            return False
+ 
     if await is_authorized_admin(chat.id, user.id, permission, context=context):
         return True
  
@@ -262,5 +276,6 @@ async def _issue_warning(update: Update, context: ContextTypes.DEFAULT_TYPE, tar
         db.reset_warnings(chat.id, target.id)
         await context.bot.send_message(chat.id, t(lang, "warning_limit_reached", name=target.full_name))
         await send_log(context, chat.id, t(lang, "log_mute", name=target.full_name))
+ 
  
  
