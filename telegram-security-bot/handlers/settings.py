@@ -133,3 +133,44 @@ async def setlogchat_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await update.message.reply_text("✅ Log chat set ho gaya hai. Ab yahan ke saare alerts wahan jayenge.")
  
  
+async def setchannel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    /setchannel <@username> — Force Join ke liye required CHANNEL set karta hai.
+    Example: /setchannel @cinemagyanupdates
+    """
+    chat = update.effective_chat
+    if not await guard_or_warn(update, context, "can_settings"):
+        return
+ 
+    if not context.args:
+        await update.message.reply_text("📺 Use: `/setchannel @channelusername`", parse_mode="Markdown")
+        return
+ 
+    username = context.args[0].lstrip("@")
+    db.update_group(chat.id, required_channel=username, force_join=1)
+    await update.message.reply_text(
+        f"✅ Required channel set to @{username}.\n📢 Force Join is now ON.\n"
+        f"⚠️ Make sure I'm an admin in @{username}, otherwise I can't verify members."
+    )
+ 
+ 
+async def setgroup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    /setgroup <@username> — Force Join ke liye required GROUP set karta hai.
+    Example: /setgroup @english_chatting_USA18
+    """
+    chat = update.effective_chat
+    if not await guard_or_warn(update, context, "can_settings"):
+        return
+ 
+    if not context.args:
+        await update.message.reply_text("👥 Use: `/setgroup @groupusername`", parse_mode="Markdown")
+        return
+ 
+    username = context.args[0].lstrip("@")
+    db.update_group(chat.id, required_group=username, force_join=1)
+    await update.message.reply_text(
+        f"✅ Required group set to @{username}.\n📢 Force Join is now ON.\n"
+        f"⚠️ Make sure I'm an admin in @{username}, otherwise I can't verify members."
+    )
+ 
