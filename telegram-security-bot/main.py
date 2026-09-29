@@ -139,8 +139,8 @@ def main():
     app.add_handler(CommandHandler("warn", warn_command))
  
     # Bot-owner commands (sirf OWNER_ID)
-    app.add_handler(CommandHandler("stats", stats_command))
-    app.add_handler(CommandHandler("groups", groups_command))
+    app.add_handler(CommandHandler("stats", stats_command, filters=filters.ChatType.PRIVATE))
+    app.add_handler(CommandHandler("groups", groups_command, filters=filters.ChatType.PRIVATE))
  
     # Join requests (auto accept)
     app.add_handler(ChatJoinRequestHandler(auto_accept_join_request))
@@ -166,4 +166,5 @@ def main():
  
 if __name__ == "__main__":
     main()
+ 
  
