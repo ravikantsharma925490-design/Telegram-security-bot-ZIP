@@ -46,3 +46,18 @@ WELCOME_IMAGE = os.environ.get(
 # Render env mein OWNER_ID naam se daalo (ID @userinfobot se milti hai).
 OWNER_ID = int(os.environ.get("OWNER_ID", "0") or 0)
  
+ 
+# Group welcome ke liye photos — naya member aane par inme se koi ek random
+# photo lagti hai. Render env mein GROUP_WELCOME_IMAGES daal kar (comma se
+# alag URLs) is list ko override bhi kar sakte ho.
+GROUP_WELCOME_IMAGES = [
+    u.strip() for u in os.environ.get(
+        "GROUP_WELCOME_IMAGES",
+        "https://raw.githubusercontent.com/ravikantsharma925490-design/Telegram-security-bot-ZIP/main/images/imagesgroup_welcome1.jpg,"
+        "https://raw.githubusercontent.com/ravikantsharma925490-design/Telegram-security-bot-ZIP/main/images/imagesgroup_welcome2.jpg,"
+        "https://raw.githubusercontent.com/ravikantsharma925490-design/Telegram-security-bot-ZIP/main/images/imagesgroup_welcome3.jpg,"
+        "https://raw.githubusercontent.com/ravikantsharma925490-design/Telegram-security-bot-ZIP/main/images/imagesgroup_welcome4.jpg,"
+        "https://raw.githubusercontent.com/ravikantsharma925490-design/Telegram-security-bot-ZIP/main/images/imagesgroup_welcome5.jpg",
+    ).split(",") if u.strip()
+]
+ 
