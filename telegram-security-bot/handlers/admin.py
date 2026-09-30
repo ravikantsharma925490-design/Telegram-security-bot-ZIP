@@ -11,8 +11,33 @@ from telegram.ext import ContextTypes
 import database as db
 from utils.lang import t
 from handlers.logger import send_log
-from utils.media import send_photo_or_text
 from config import BANNED_IMAGE
+ 
+import os as _os
+ 
+_IMAGES_DIR = _os.path.join(
+    _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))), "images"
+)
+ 
+ 
+async def send_photo_or_text(context, chat_id, image_url, text, reply_to=None):
+    """Photo + caption bhejta hai. URL fail ho to local file, phir sirf text."""
+    if image_url:
+        try:
+            await context.bot.send_photo(chat_id, photo=image_url, caption=text, reply_to_message_id=reply_to)
+            return
+        except Exception:
+            pass
+        local = _os.path.join(_IMAGES_DIR, _os.path.basename(image_url.split("?")[0]))
+        if _os.path.exists(local):
+            try:
+                with open(local, "rb") as f:
+                    await context.bot.send_photo(chat_id, photo=f, caption=text, reply_to_message_id=reply_to)
+                return
+            except Exception:
+                pass
+    await context.bot.send_message(chat_id, text, reply_to_message_id=reply_to)
+ 
  
  
 async def is_owner(chat_id: int, user_id: int, context: ContextTypes.DEFAULT_TYPE = None) -> bool:
