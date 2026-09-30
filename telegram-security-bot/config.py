@@ -79,3 +79,9 @@ RESTRICTED_IMAGE = _to_raw(os.environ.get(
 ).strip())
  
  
+# Ban hone par jo photo message ke saath jayegi (GitHub par images/banned.jpg)
+BANNED_IMAGE = _to_raw(os.environ.get(
+    "BANNED_IMAGE",
+    "https://github.com/ravikantsharma925490-design/Telegram-security-bot-ZIP/blob/main/images/banned.jpg",
+).strip())
+ 
