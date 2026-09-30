@@ -3,11 +3,14 @@ Welcome handler — naye member ka welcome, language selection button,
 aur join requests ko automatically accept karna (Force Join System se pehle).
 """
  
+import random
+ 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
  
 import database as db
 from utils.lang import t, LANGUAGE_NAMES
+from config import GROUP_WELCOME_IMAGES
 from handlers.logger import send_log
  
  
@@ -52,7 +55,16 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if member.is_bot:
             continue
         text = t(lang, "welcome", name=member.full_name)
-        await update.message.reply_text(text)
+        if GROUP_WELCOME_IMAGES:
+            photo = random.choice(GROUP_WELCOME_IMAGES)
+            try:
+                await update.message.reply_photo(photo=photo, caption=text)
+            except Exception:
+                # Photo URL kabhi invalid/unreachable ho to bhi welcome
+                # message chup na ho, sirf text bhej do.
+                await update.message.reply_text(text)
+        else:
+            await update.message.reply_text(text)
         await send_log(context, chat.id, t(lang, "log_user_joined", name=member.full_name))
  
  
@@ -86,4 +98,5 @@ async def language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(t(code, "language_set"), reply_markup=_language_keyboard())
     except Exception:
         pass
+ 
  
