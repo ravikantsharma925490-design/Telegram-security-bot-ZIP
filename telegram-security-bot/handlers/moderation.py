@@ -3,6 +3,7 @@ Moderation handler — anti-spam, flood protection aur bad-word filter.
 Har violation par warning system (handlers/admin.py ki _issue_warning) call hota hai.
 """
  
+import os
 import time
 from collections import defaultdict
  
@@ -13,7 +14,29 @@ import database as db
 from utils.lang import t
 from handlers.logger import send_log
 from handlers.admin import _issue_warning
-from config import FLOOD_MESSAGE_LIMIT, FLOOD_TIME_WINDOW, LINK_SPAM_RESTRICT_DAYS
+from config import FLOOD_MESSAGE_LIMIT, FLOOD_TIME_WINDOW, LINK_SPAM_RESTRICT_DAYS, RESTRICTED_IMAGE
+ 
+_IMAGES_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "images")
+ 
+ 
+async def _send_restricted_message(context, chat_id, text):
+    """Restrict message photo ke saath bhejta hai. URL fail ho to local file, phir text."""
+    if RESTRICTED_IMAGE:
+        try:
+            await context.bot.send_photo(chat_id, photo=RESTRICTED_IMAGE, caption=text)
+            return
+        except Exception:
+            pass
+        local = os.path.join(_IMAGES_DIR, os.path.basename(RESTRICTED_IMAGE.split("?")[0]))
+        if os.path.exists(local):
+            try:
+                with open(local, "rb") as f:
+                    await context.bot.send_photo(chat_id, photo=f, caption=text)
+                return
+            except Exception:
+                pass
+    await context.bot.send_message(chat_id, text)
+ 
  
 # In-memory flood tracker: {(chat_id, user_id): [timestamps]}
 _message_times = defaultdict(list)
@@ -126,7 +149,8 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             db.block_user(chat.id, user.id, restrict_seconds)
             db.incr_stat("spam_deleted")
  
-            await context.bot.send_message(
+            await _send_restricted_message(
+                context,
                 chat.id,
                 f"{t(lang, 'spam_deleted')}\n🚫 {user.full_name} has been restricted for {LINK_SPAM_RESTRICT_DAYS} days for sending a link/username.",
             )
@@ -134,5 +158,6 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             return False
  
     return True
+ 
  
  
