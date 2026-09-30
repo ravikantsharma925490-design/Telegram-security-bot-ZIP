@@ -50,7 +50,7 @@ OWNER_ID = int(os.environ.get("OWNER_ID", "0") or 0)
 # Group welcome ke liye photos — naya member aane par inme se koi ek random
 # photo lagti hai. Render env mein GROUP_WELCOME_IMAGES daal kar (comma se
 # alag URLs) is list ko override bhi kar sakte ho.
-GROUP_WELCOME_IMAGES = [
+_RAW_WELCOME_IMAGES = [
     u.strip() for u in os.environ.get(
         "GROUP_WELCOME_IMAGES",
         "https://raw.githubusercontent.com/ravikantsharma925490-design/Telegram-security-bot-ZIP/main/images/imagesgroup_welcome1.jpg,"
@@ -61,3 +61,16 @@ GROUP_WELCOME_IMAGES = [
     ).split(",") if u.strip()
 ]
  
+ 
+def _to_raw(url):
+    """github.com/.../blob/... (web page) ko raw.githubusercontent.com (direct image) me badalta hai."""
+    if "github.com" in url and "/blob/" in url:
+        url = url.replace("https://github.com/", "https://raw.githubusercontent.com/").replace("/blob/", "/", 1)
+    return url
+ 
+ 
+GROUP_WELCOME_IMAGES = [_to_raw(u) for u in _RAW_WELCOME_IMAGES]
+ 
+ 
+
+
