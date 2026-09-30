@@ -85,3 +85,10 @@ BANNED_IMAGE = _to_raw(os.environ.get(
     "https://github.com/ravikantsharma925490-design/Telegram-security-bot-ZIP/blob/main/images/banned.jpg",
 ).strip())
  
+ 
+# Unban hone par jo photo message ke saath jayegi (GitHub par images/unbanned.jpg)
+UNBANNED_IMAGE = _to_raw(os.environ.get(
+    "UNBANNED_IMAGE",
+    "https://github.com/ravikantsharma925490-design/Telegram-security-bot-ZIP/blob/main/images/unbanned.jpg",
+).strip())
+ 
