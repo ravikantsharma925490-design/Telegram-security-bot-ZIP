@@ -11,6 +11,8 @@ from telegram.ext import ContextTypes
 import database as db
 from utils.lang import t
 from handlers.logger import send_log
+from utils.media import send_photo_or_text
+from config import BANNED_IMAGE
  
  
 async def is_owner(chat_id: int, user_id: int, context: ContextTypes.DEFAULT_TYPE = None) -> bool:
@@ -203,7 +205,11 @@ async def ban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
  
     db.incr_stat("bans")
     lang = db.get_group(chat.id)["default_language"]
-    await update.message.reply_text(t(lang, "user_blocked", name=target_name))
+    await send_photo_or_text(
+        context, chat.id, BANNED_IMAGE,
+        t(lang, "user_blocked", name=target_name),
+        reply_to=update.message.message_id,
+    )
     await send_log(context, chat.id, t(lang, "log_block", name=target_name))
  
  
@@ -321,6 +327,7 @@ async def _issue_warning(update: Update, context: ContextTypes.DEFAULT_TYPE, tar
         db.reset_warnings(chat.id, target.id)
         await context.bot.send_message(chat.id, t(lang, "warning_limit_reached", name=target.full_name))
         await send_log(context, chat.id, t(lang, "log_mute", name=target.full_name))
+ 
  
  
  
