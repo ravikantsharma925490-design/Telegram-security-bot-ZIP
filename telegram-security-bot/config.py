@@ -92,3 +92,10 @@ UNBANNED_IMAGE = _to_raw(os.environ.get(
     "https://github.com/ravikantsharma925490-design/Telegram-security-bot-ZIP/blob/main/images/unbanned.jpg",
 ).strip())
  
+ 
+# Warning milne par jo photo message ke saath jayegi (GitHub par images/warning.jpg)
+WARNING_IMAGE = _to_raw(os.environ.get(
+    "WARNING_IMAGE",
+    "https://github.com/ravikantsharma925490-design/Telegram-security-bot-ZIP/blob/main/images/warning.jpg",
+).strip())
+ 
