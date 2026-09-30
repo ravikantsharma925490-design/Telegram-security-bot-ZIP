@@ -11,7 +11,7 @@ from telegram.ext import ContextTypes
 import database as db
 from utils.lang import t
 from handlers.logger import send_log
-from config import BANNED_IMAGE
+from config import BANNED_IMAGE, UNBANNED_IMAGE
  
 import os as _os
  
@@ -256,7 +256,11 @@ async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
  
     db.unblock_user(chat.id, target_id)
     lang = db.get_group(chat.id)["default_language"]
-    await update.message.reply_text(t(lang, "user_unblocked", name=target_name))
+    await send_photo_or_text(
+        context, chat.id, UNBANNED_IMAGE,
+        t(lang, "user_unblocked", name=target_name),
+        reply_to=update.message.message_id,
+    )
     await send_log(context, chat.id, t(lang, "log_admin_action", name=target_name, action="unbanned"))
  
  
@@ -352,8 +356,3 @@ async def _issue_warning(update: Update, context: ContextTypes.DEFAULT_TYPE, tar
         db.reset_warnings(chat.id, target.id)
         await context.bot.send_message(chat.id, t(lang, "warning_limit_reached", name=target.full_name))
         await send_log(context, chat.id, t(lang, "log_mute", name=target.full_name))
- 
- 
- 
- 
- 
