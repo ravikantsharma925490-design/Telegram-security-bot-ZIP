@@ -72,5 +72,10 @@ def _to_raw(url):
 GROUP_WELCOME_IMAGES = [_to_raw(u) for u in _RAW_WELCOME_IMAGES]
  
  
-
-
+# Restrict hone par jo photo message ke saath jayegi (GitHub par images/restricted.jpg)
+RESTRICTED_IMAGE = _to_raw(os.environ.get(
+    "RESTRICTED_IMAGE",
+    "https://github.com/ravikantsharma925490-design/Telegram-security-bot-ZIP/blob/main/images/restricted.jpg",
+).strip())
+ 
+ 
