@@ -3,6 +3,7 @@ Welcome handler — naye member ka welcome, language selection button,
 aur join requests ko automatically accept karna (Force Join System se pehle).
 """
  
+import os
 import random
  
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -33,6 +34,50 @@ async def auto_accept_join_request(update: Update, context: ContextTypes.DEFAULT
     await send_log(context, chat.id, t(lang, "log_auto_request_approved", name=user.full_name))
  
  
+# ---- Welcome/Goodbye photos: har baar agli photo (5 me se, repeat tab tak nahi jab tak sab na aa jayein)
+_IMAGES_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "images")
+_photo_bags = {}  # chat_id -> bachi hui photos ki list
+ 
+ 
+def _next_photo(chat_id):
+    bag = _photo_bags.get(chat_id)
+    if not bag:
+        bag = list(GROUP_WELCOME_IMAGES)
+        random.shuffle(bag)
+        # naya round pichli aakhri photo se shuru na ho
+        last = _photo_bags.get(("last", chat_id))
+        if last and len(bag) > 1 and bag[-1] == last:
+            bag[0], bag[-1] = bag[-1], bag[0]
+    photo = bag.pop()
+    _photo_bags[chat_id] = bag
+    _photo_bags[("last", chat_id)] = photo
+    return photo
+ 
+ 
+async def _send_photo_message(context, chat_id, text, reply_to=None):
+    """Photo + text bhejta hai. Pehle URL, fail ho to local file, phir bhi fail ho to sirf text."""
+    if GROUP_WELCOME_IMAGES:
+        url = _next_photo(chat_id)
+        try:
+            await context.bot.send_photo(chat_id, photo=url, caption=text, reply_to_message_id=reply_to)
+            return
+        except Exception:
+            pass
+        local = os.path.join(_IMAGES_DIR, os.path.basename(url.split("?")[0]))
+        if os.path.exists(local):
+            try:
+                with open(local, "rb") as f:
+                    await context.bot.send_photo(chat_id, photo=f, caption=text, reply_to_message_id=reply_to)
+                return
+            except Exception:
+                pass
+    try:
+        await context.bot.send_message(chat_id, text, reply_to_message_id=reply_to)
+    except Exception:
+        pass
+ 
+ 
+ 
 def _language_keyboard():
     buttons, row = [], []
     for code, label in LANGUAGE_NAMES.items():
@@ -55,16 +100,7 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if member.is_bot:
             continue
         text = t(lang, "welcome", name=member.full_name)
-        if GROUP_WELCOME_IMAGES:
-            photo = random.choice(GROUP_WELCOME_IMAGES)
-            try:
-                await update.message.reply_photo(photo=photo, caption=text)
-            except Exception:
-                # Photo URL kabhi invalid/unreachable ho to bhi welcome
-                # message chup na ho, sirf text bhej do.
-                await update.message.reply_text(text)
-        else:
-            await update.message.reply_text(text)
+        await _send_photo_message(context, chat.id, text, reply_to=update.message.message_id)
         await send_log(context, chat.id, t(lang, "log_user_joined", name=member.full_name))
  
  
@@ -98,5 +134,6 @@ async def language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(t(code, "language_set"), reply_markup=_language_keyboard())
     except Exception:
         pass
+ 
  
  
