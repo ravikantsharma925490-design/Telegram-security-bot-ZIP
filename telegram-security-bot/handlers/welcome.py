@@ -11,7 +11,8 @@ from telegram.ext import ContextTypes
  
 import database as db
 from utils.lang import t, LANGUAGE_NAMES
-from config import GROUP_WELCOME_IMAGES
+from config import GROUP_WELCOME_IMAGES, GOODBYE_IMAGE
+from handlers.admin import send_photo_or_text
 from handlers.logger import send_log
  
  
@@ -110,6 +111,14 @@ async def member_left(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang = group["default_language"]
     left_member = update.message.left_chat_member
     if left_member and not left_member.is_bot:
+        # Goodbye sirf tab jab member ne khud group chhoda ho. Agar kisi admin/bot ne
+        # ban ya kick kiya hai to service message ka 'from' user alag hota hai — tab skip.
+        sender = update.message.from_user
+        if sender is None or sender.id == left_member.id:
+            await send_photo_or_text(
+                context, chat.id, GOODBYE_IMAGE,
+                t(lang, "goodbye", name=left_member.full_name),
+            )
         await send_log(context, chat.id, t(lang, "log_user_left", name=left_member.full_name))
  
  
@@ -134,6 +143,7 @@ async def language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(t(code, "language_set"), reply_markup=_language_keyboard())
     except Exception:
         pass
+ 
  
  
  
