@@ -31,6 +31,7 @@
   "admin_added": "➕ {name} is now an authorized admin.",
   "admin_removed": "➖ {name}'s admin permissions were removed.",
   "log_user_joined": "👤 {name} joined the group.",
+  "goodbye": "👋 {name} has left the group. Goodbye, take care!",
   "log_user_left": "🚪 {name} left the group.",
   "log_warning": "⚠️ Warning given to {name} ({count}/{limit}) — {reason}",
   "log_mute": "🔇 {name} was muted.",
