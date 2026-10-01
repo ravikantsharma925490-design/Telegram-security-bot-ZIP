@@ -99,3 +99,10 @@ WARNING_IMAGE = _to_raw(os.environ.get(
     "https://github.com/ravikantsharma925490-design/Telegram-security-bot-ZIP/blob/main/images/warning.jpg",
 ).strip())
  
+ 
+# Member group chhodne par jo photo goodbye message ke saath jayegi (GitHub par images/goodbye.jpg)
+GOODBYE_IMAGE = _to_raw(os.environ.get(
+    "GOODBYE_IMAGE",
+    "https://github.com/ravikantsharma925490-design/Telegram-security-bot-ZIP/blob/main/images/goodbye.jpg",
+).strip())
+ 
