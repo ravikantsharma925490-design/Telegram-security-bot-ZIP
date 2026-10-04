@@ -119,6 +119,17 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(t(lang, "help"), parse_mode=ParseMode.MARKDOWN)
  
  
+async def rules_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/rules — group ke rules kabhi bhi dubara padhne ke liye."""
+    chat = update.effective_chat
+    user = update.effective_user
+    if chat.type == "private":
+        lang = db.get_user_language(user.id)
+    else:
+        lang = db.get_group(chat.id)["default_language"]
+    await update.message.reply_text(t(lang, "group_rules"))
+ 
+ 
 async def get_file_id_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Utility command — kisi photo/video/document par reply karke /getfileid bhejo,
@@ -148,4 +159,5 @@ async def get_file_id_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     await message.reply_text(f"📎 File ID:\n`{file_id}`", parse_mode=ParseMode.MARKDOWN)
  
  
-
+ 
+ 
