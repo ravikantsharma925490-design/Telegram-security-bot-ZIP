@@ -94,6 +94,13 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if not message or not message.text or user.is_bot:
         return True
  
+    # Koi bhi command (/rules, /ban@BotName, etc.) kabhi spam nahi maana
+    # jaata — Telegram kabhi command ke saath "@BotName" bhi jod deta hai,
+    # jisme "@" hota hai, aur neeche ka anti-spam check use username
+    # samajh ke galti se restrict kar deta tha.
+    if message.text.startswith("/"):
+        return True
+ 
     group = db.get_group(chat.id)
     lang = db.get_effective_language(chat.id, user.id)  # jis user ko message ja raha hai, uski apni language
  
@@ -158,6 +165,7 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             return False
  
     return True
+ 
  
  
  
