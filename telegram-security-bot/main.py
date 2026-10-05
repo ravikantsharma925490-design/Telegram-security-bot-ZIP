@@ -21,7 +21,7 @@ from telegram.ext import (
 import database as db
 from config import BOT_TOKEN
  
-from handlers.setup import start_command, help_command, get_file_id_command
+from handlers.setup import start_command, help_command, rules_command, get_file_id_command
 from handlers.settings import settings_command, settings_toggle_callback, setlanguage_command, setchannel_command, setgroup_command, setlogchat_command
 from handlers.admin import add_admin_command, remove_admin_command, ban_command, unban_command, mute_command, unmute_command, warn_command
 from handlers.welcome import auto_accept_join_request, welcome_new_member, member_left, language_callback, language_command
@@ -122,6 +122,7 @@ def main():
     # Core commands
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("rules", rules_command))
     app.add_handler(CommandHandler("getfileid", get_file_id_command))
     app.add_handler(CommandHandler("settings", settings_command))
     app.add_handler(CommandHandler("setlanguage", setlanguage_command))
@@ -166,5 +167,6 @@ def main():
  
 if __name__ == "__main__":
     main()
+ 
  
  
