@@ -7,7 +7,7 @@ mein kuch badalne ki zaroorat na pade.
 """
  
 import time
-from pymongo import MongoClient
+from pymongo import MongoClient, ReturnDocument
  
 from config import MONGO_URI, MONGO_DB_NAME, DEFAULT_WARNING_LIMIT, DEFAULT_MUTE_DURATION, DEFAULT_BLOCK_DURATION, DEFAULT_REQUIRED_CHANNEL, DEFAULT_REQUIRED_GROUP
  
@@ -47,10 +47,22 @@ def init_db():
     _db.user_prefs.create_index("user_id", unique=True)
     _db.warnings.create_index([("chat_id", 1), ("user_id", 1)], unique=True)
     _db.blocked_users.create_index([("chat_id", 1), ("user_id", 1)], unique=True)
+    _db.flood.create_index([("chat_id", 1), ("user_id", 1)], unique=True)
  
-    # Force Join band karne ke liye: purane saved groups ke channel/group username khaali karo.
-    # (Kaam ho jaane ke baad ye line hata sakte ho.)
-    _db.groups.update_many({}, {"$set": {"required_channel": "", "required_group": ""}})
+ 
+ 
+# ---------- Flood tracking (MongoDB mein, serverless ke liye) ----------
+ 
+def add_flood_hit(chat_id, user_id, window):
+    """Flood count MongoDB mein rakhta hai (serverless mein memory reset ho jati hai)."""
+    now = time.time()
+    doc = _db.flood.find_one_and_update(
+        {"chat_id": chat_id, "user_id": user_id},
+        {"$push": {"ts": {"$each": [now], "$slice": -20}}},
+        upsert=True,
+        return_document=ReturnDocument.AFTER,
+    )
+    return sum(1 for ts in doc["ts"] if now - ts < window)
  
  
 # ---------- Group config helpers ----------
@@ -191,4 +203,5 @@ def get_stats():
         "bans": _get_stat("bans"),
         "warnings": _get_stat("warnings"),
     }
+ 
  
