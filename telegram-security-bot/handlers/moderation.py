@@ -76,11 +76,8 @@ def _contains_bad_word(text: str) -> bool:
  
  
 def _is_flooding(chat_id: int, user_id: int) -> bool:
-    now = time.time()
-    key = (chat_id, user_id)
-    _message_times[key] = [ts for ts in _message_times[key] if now - ts < FLOOD_TIME_WINDOW]
-    _message_times[key].append(now)
-    return len(_message_times[key]) > FLOOD_MESSAGE_LIMIT
+    # Count MongoDB mein rakha jata hai (Vercel par memory reset ho jati hai)
+    return db.add_flood_hit(chat_id, user_id, FLOOD_TIME_WINDOW) > FLOOD_MESSAGE_LIMIT
  
  
 async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
@@ -165,6 +162,7 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             return False
  
     return True
+ 
  
  
  
