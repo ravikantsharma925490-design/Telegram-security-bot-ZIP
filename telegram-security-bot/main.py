@@ -103,11 +103,7 @@ async def _post_init(application):
     ])
  
  
-def main():
-    threading.Thread(target=_run_dummy_web_server, daemon=True).start()
- 
-    db.init_db()
- 
+def build_application():
     app = (
         ApplicationBuilder()
         .token(BOT_TOKEN)
@@ -160,13 +156,20 @@ def main():
     app.add_handler(CallbackQueryHandler(settings_toggle_callback, pattern="^toggle_"))
     app.add_handler(CallbackQueryHandler(language_callback, pattern="^setlang_"))
     app.add_handler(CallbackQueryHandler(verify_callback, pattern="^force_join_verify$"))
+    return app
  
+ 
+def main():
+    threading.Thread(target=_run_dummy_web_server, daemon=True).start()
+    db.init_db()
+    app = build_application()
     logger.info("Bot starting...")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
  
  
 if __name__ == "__main__":
     main()
+ 
  
  
  
