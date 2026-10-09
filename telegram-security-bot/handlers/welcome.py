@@ -56,27 +56,13 @@ def _next_photo(chat_id):
  
  
 async def _send_photo_message(context, chat_id, text, reply_to=None):
-    """Photo + text bhejta hai. Pehle URL, fail ho to local file, phir bhi fail ho to sirf text."""
-    if GROUP_WELCOME_IMAGES:
-        url = _next_photo(chat_id)
-        try:
-            await context.bot.send_photo(chat_id, photo=url, caption=text, reply_to_message_id=reply_to)
-            return
-        except Exception:
-            pass
-        local = os.path.join(_IMAGES_DIR, os.path.basename(url.split("?")[0]))
-        if os.path.exists(local):
-            try:
-                with open(local, "rb") as f:
-                    await context.bot.send_photo(chat_id, photo=f, caption=text, reply_to_message_id=reply_to)
-                return
-            except Exception:
-                pass
+    """Welcome photo (rotation se) + text. Asli kaam admin.send_photo_or_text karta hai."""
+    url = _next_photo(chat_id) if GROUP_WELCOME_IMAGES else None
     try:
-        await context.bot.send_message(chat_id, text, reply_to_message_id=reply_to)
-    except Exception:
-        pass
- 
+        await send_photo_or_text(context, chat_id, url, text, reply_to=reply_to)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("welcome message send failed: %s", e)
  
  
 def _language_keyboard():
@@ -147,3 +133,7 @@ async def language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
  
  
  
+ 
+
+
+
