@@ -13,29 +13,64 @@ from utils.lang import t
 from handlers.logger import send_log
 from config import BANNED_IMAGE, UNBANNED_IMAGE, WARNING_IMAGE
  
+import logging
 import os as _os
  
-_IMAGES_DIR = _os.path.join(
-    _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))), "images"
-)
+logger = logging.getLogger(__name__)
+ 
+_HERE = _os.path.dirname(_os.path.abspath(__file__))
+# images folder in dono jagah dhoondhta hai: telegram-security-bot/images aur repo-root/images
+_IMAGE_DIRS = [
+    _os.path.join(_os.path.dirname(_HERE), "images"),
+    _os.path.join(_os.path.dirname(_os.path.dirname(_HERE)), "images"),
+    _os.path.join(_os.getcwd(), "images"),
+]
+_file_id_cache = {}  # image naam -> Telegram file_id (ek baar upload ke baad turant bhejne ke liye)
+ 
+ 
+def _find_local_image(name):
+    for d in _IMAGE_DIRS:
+        path = _os.path.join(d, name)
+        if _os.path.isfile(path):
+            return path
+    return None
  
  
 async def send_photo_or_text(context, chat_id, image_url, text, reply_to=None):
-    """Photo + caption bhejta hai. URL fail ho to local file, phir sirf text."""
+    """Photo + caption bhejta hai. Order: cached file_id -> local file upload -> URL -> sirf text.
+    Har fail ka asli reason log mein dikhta hai (Render logs)."""
     if image_url:
-        try:
-            await context.bot.send_photo(chat_id, photo=image_url, caption=text, reply_to_message_id=reply_to)
-            return
-        except Exception:
-            pass
-        local = _os.path.join(_IMAGES_DIR, _os.path.basename(image_url.split("?")[0]))
-        if _os.path.exists(local):
+        name = _os.path.basename(image_url.split("?")[0])
+        caption = text[:1024]  # Telegram caption limit
+ 
+        file_id = _file_id_cache.get(name)
+        if file_id:
+            try:
+                await context.bot.send_photo(chat_id, photo=file_id, caption=caption, reply_to_message_id=reply_to)
+                return
+            except Exception as e:
+                logger.warning("send_photo (file_id) failed for %s: %s", name, e)
+                _file_id_cache.pop(name, None)
+ 
+        local = _find_local_image(name)
+        if local:
             try:
                 with open(local, "rb") as f:
-                    await context.bot.send_photo(chat_id, photo=f, caption=text, reply_to_message_id=reply_to)
+                    msg = await context.bot.send_photo(chat_id, photo=f, caption=caption, reply_to_message_id=reply_to)
+                if msg and msg.photo:
+                    _file_id_cache[name] = msg.photo[-1].file_id
                 return
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("send_photo (local file %s) failed: %s", local, e)
+        else:
+            logger.warning("Local image '%s' nahi mili. Dhoondhe: %s", name, _IMAGE_DIRS)
+ 
+        try:
+            await context.bot.send_photo(chat_id, photo=image_url, caption=caption, reply_to_message_id=reply_to)
+            return
+        except Exception as e:
+            logger.warning("send_photo (URL %s) failed: %s", image_url, e)
+ 
     await context.bot.send_message(chat_id, text, reply_to_message_id=reply_to)
  
  
@@ -362,3 +397,9 @@ async def _issue_warning(update: Update, context: ContextTypes.DEFAULT_TYPE, tar
  
  
  
+ 
+
+
+
+
+
