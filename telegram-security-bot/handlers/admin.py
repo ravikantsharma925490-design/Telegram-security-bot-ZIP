@@ -398,8 +398,3 @@ async def _issue_warning(update: Update, context: ContextTypes.DEFAULT_TYPE, tar
  
  
  
-
-
-
-
-
