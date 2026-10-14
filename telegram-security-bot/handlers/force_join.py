@@ -3,12 +3,23 @@ Force Join handler — user ko message bhejne se pehle required channel aur
 required group dono join karna zaroori hai. Owner/authorized admins exempt hain.
 """
  
+import html
+ 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
  
 import database as db
 from utils.lang import t
 from handlers.logger import send_log
+ 
+ 
+def _user_mention(user) -> str:
+    """@username agar hai, warna clickable naam (click karne par profile khulti hai)."""
+    if user.username:
+        return f"@{html.escape(user.username)}"
+    name = html.escape(user.full_name or "User")
+    return f'<a href="tg://user?id={user.id}">{name}</a>'
  
  
 async def _is_member(context: ContextTypes.DEFAULT_TYPE, channel_username: str, user_id: int) -> bool:
@@ -63,8 +74,9 @@ async def force_join_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     buttons.append([InlineKeyboardButton(t(lang, "verify"), callback_data="force_join_verify")])
  
     await context.bot.send_message(
-        chat.id, t(lang, "force_join_prompt"),
+        chat.id, t(lang, "force_join_prompt", mention=_user_mention(user)),
         reply_markup=InlineKeyboardMarkup(buttons),
+        parse_mode=ParseMode.HTML,
     )
     return False
  
@@ -85,4 +97,5 @@ async def verify_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_log(context, chat.id, t(lang, "log_force_join_verified", name=user.full_name))
     else:
         await query.answer(t(lang, "verify_fail"), show_alert=True)
+ 
  
