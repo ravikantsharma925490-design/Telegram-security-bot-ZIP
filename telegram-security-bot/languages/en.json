@@ -12,7 +12,7 @@
   "settings_title": "⚙️ *Group Settings*\nTap a button to toggle a feature.",
   "on": "✅ ON",
   "off": "❌ OFF",
-  "force_join_prompt": "📢 Please join our channel and group first, then tap Verify:",
+  "force_join_prompt": "👤 {mention}\n📢 Please join our channel and group first, then tap Verify:\n🔒 This join is only required to confirm you are a real user.",
   "join_channel": "📺 Join Channel",
   "join_group": "👥 Join Group",
   "verify": "✅ Verify",
