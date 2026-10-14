@@ -15,7 +15,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from telegram import Update, BotCommand
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler,
-    ChatJoinRequestHandler, ContextTypes, filters,
+    ChatJoinRequestHandler, ChatMemberHandler, ContextTypes, filters,
 )
  
 import database as db
@@ -24,7 +24,7 @@ from config import BOT_TOKEN
 from handlers.setup import start_command, help_command, rules_command, get_file_id_command
 from handlers.settings import settings_command, settings_toggle_callback, setlanguage_command, setchannel_command, setgroup_command, setlogchat_command
 from handlers.admin import add_admin_command, remove_admin_command, ban_command, unban_command, mute_command, unmute_command, warn_command
-from handlers.welcome import auto_accept_join_request, welcome_new_member, member_left, language_callback, language_command
+from handlers.welcome import auto_accept_join_request, welcome_new_member, member_left, chat_member_update, language_callback, language_command
 from handlers.force_join import force_join_check, verify_callback
 from handlers.moderation import moderation_check
 from handlers.media_filter import media_moderation_check
@@ -146,6 +146,9 @@ def build_application():
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_new_member))
     app.add_handler(MessageHandler(filters.StatusUpdate.LEFT_CHAT_MEMBER, member_left))
  
+    # chat_member updates: jin groups mein 'joined/left' service message nahi aata wahan welcome/goodbye yahin se
+    app.add_handler(ChatMemberHandler(chat_member_update, ChatMemberHandler.CHAT_MEMBER))
+ 
     # Normal group messages -> force join + moderation + media checks
     app.add_handler(MessageHandler(
         filters.ChatType.GROUPS & ~filters.StatusUpdate.ALL,
@@ -169,6 +172,7 @@ def main():
  
 if __name__ == "__main__":
     main()
+ 
  
  
  
