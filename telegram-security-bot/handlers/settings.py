@@ -22,20 +22,21 @@ TOGGLE_FIELDS = [
     ("unauthorized_cmd_protection", "⚠️ Unauthorized Cmd Protection"),
     ("admin_alerts", "🚨 Admin Alerts"),
     ("auto_accept_requests", "🤖 Auto Accept Requests"),
+    ("block_bot_add", "🔒 Block Bot Adding"),
 ]
  
  
 def _settings_keyboard(group):
     buttons = []
     for field, label in TOGGLE_FIELDS:
-        state = "✅" if group[field] else "❌"
+        state = "✅" if group.get(field, 0) else "❌"
         buttons.append([InlineKeyboardButton(f"{state} {label}", callback_data=f"toggle_{field}")])
     return InlineKeyboardMarkup(buttons)
  
  
 async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
-    if not await guard_or_warn(update, context, "can_settings"):
+    if not await guard_or_warn(update, context):
         return
     group = db.get_group(chat.id)
     lang = group["default_language"]
@@ -52,8 +53,8 @@ async def settings_toggle_callback(update: Update, context: ContextTypes.DEFAULT
     user = update.effective_user
  
     from handlers.admin import is_authorized_admin
-    if not await is_authorized_admin(chat.id, user.id, "can_settings"):
-        await query.answer("🚫 Not authorized.", show_alert=True)
+    if not await is_authorized_admin(chat.id, user.id, context=context):
+        await query.answer("🚫 Only the group owner or admins can change settings.", show_alert=True)
         return
  
     field = query.data.replace("toggle_", "")
@@ -70,7 +71,7 @@ async def setlanguage_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     force-join messages wagairah bolega. Example: /setlanguage hi
     """
     chat = update.effective_chat
-    if not await guard_or_warn(update, context, "can_settings"):
+    if not await guard_or_warn(update, context):
         return
  
     if not context.args:
@@ -99,7 +100,7 @@ async def setlogchat_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     taaki wahan message bhej sake). Sirf owner/authorized admin use kar sakta hai.
     """
     chat = update.effective_chat
-    if not await guard_or_warn(update, context, "can_settings"):
+    if not await guard_or_warn(update, context):
         return
  
     replied = update.message.reply_to_message
