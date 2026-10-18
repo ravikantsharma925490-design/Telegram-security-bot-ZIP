@@ -11,7 +11,7 @@ from telegram.ext import ContextTypes
 import database as db
 from utils.lang import t
 from handlers.logger import send_log
-from config import BANNED_IMAGE, UNBANNED_IMAGE, WARNING_IMAGE, DEFAULT_WARNING_LIMIT
+from config import BANNED_IMAGE, UNBANNED_IMAGE, WARNING_IMAGE, DEFAULT_WARNING_LIMIT, LINK_SPAM_RESTRICT_DAYS
  
 import logging
 import os as _os
@@ -361,7 +361,7 @@ async def warn_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _issue_warning(update, context, target, reason)
  
  
-async def _issue_warning(update: Update, context: ContextTypes.DEFAULT_TYPE, target, reason, restrict_seconds=None):
+async def _issue_warning(update: Update, context: ContextTypes.DEFAULT_TYPE, target, reason):
     """
     Central warning function — moderation.py bhi ise use karta hai.
     NOTE: update.message.reply_text() use nahi karte, kyunki bad-word/spam
@@ -384,22 +384,34 @@ async def _issue_warning(update: Update, context: ContextTypes.DEFAULT_TYPE, tar
     await send_log(context, chat.id, t(lang, "log_warning", name=target.full_name, count=count, limit=limit, reason=reason))
  
     if count >= limit:
-        # restrict_seconds diya ho (link/@name spam) to utne time ke liye restrict, warna pehle jaisa
-        try:
-            if restrict_seconds:
-                import time as _time
+        # Pehli baar limit poori: sirf 3 din restrict. Doosri baar: permanent restrict.
+        past = db.get_restrict_count(chat.id, target.id)
+        if past >= 1:
+            try:
+                # until_date nahi => hamesha ke liye restrict
+                await chat.restrict_member(target.id, ChatPermissions(can_send_messages=False))
+            except Exception:
+                pass
+            db.block_user(chat.id, target.id, 10 * 365 * 24 * 60 * 60)
+            msg = f"🚫 {target.full_name} reached the warning limit again and has been permanently restricted."
+        else:
+            seconds = LINK_SPAM_RESTRICT_DAYS * 24 * 60 * 60
+            try:
                 await chat.restrict_member(
                     target.id,
                     ChatPermissions(can_send_messages=False),
-                    until_date=int(_time.time()) + restrict_seconds,
+                    until_date=int(time.time()) + seconds,
                 )
-            else:
-                await chat.restrict_member(target.id, ChatPermissions(can_send_messages=False))
-        except Exception:
-            pass
-        db.block_user(chat.id, target.id, restrict_seconds or group["mute_duration"])
+            except Exception:
+                pass
+            db.block_user(chat.id, target.id, seconds)
+            msg = (
+                f"🚫 {target.full_name} reached the warning limit and is restricted for "
+                f"{LINK_SPAM_RESTRICT_DAYS} days. Next time it will be permanent."
+            )
+        db.add_restrict_count(chat.id, target.id)
         db.reset_warnings(chat.id, target.id)
-        await context.bot.send_message(chat.id, t(lang, "warning_limit_reached", name=target.full_name))
+        await context.bot.send_message(chat.id, msg)
         await send_log(context, chat.id, t(lang, "log_mute", name=target.full_name))
  
  
