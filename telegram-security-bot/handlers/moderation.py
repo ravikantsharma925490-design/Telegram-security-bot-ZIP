@@ -173,25 +173,11 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             except Exception:
                 pass
  
+            # Seedha restrict nahi: pehle warning (limit 5), limit poori hone par 3 din restrict
             restrict_seconds = LINK_SPAM_RESTRICT_DAYS * 24 * 60 * 60
-            until = int(time.time()) + restrict_seconds
-            try:
-                await chat.restrict_member(
-                    user.id,
-                    ChatPermissions(can_send_messages=False),
-                    until_date=until,
-                )
-            except Exception:
-                pass
-            db.block_user(chat.id, user.id, restrict_seconds)
             db.incr_stat("spam_deleted")
- 
-            await _send_restricted_message(
-                context,
-                chat.id,
-                f"{t(lang, 'spam_deleted')}\n🚫 {user.full_name} has been restricted for {LINK_SPAM_RESTRICT_DAYS} days for sending a link/channel username.",
-            )
             await send_log(context, chat.id, t(lang, "log_spam", name=user.full_name))
+            await _issue_warning(update, context, user, "link/channel username", restrict_seconds=restrict_seconds)
             return False
  
     return True
