@@ -83,7 +83,7 @@ def _is_flooding(chat_id: int, user_id: int) -> bool:
 async def _has_channel_or_group_mention(message, context) -> bool:
     """
     Message ke har @name ko Telegram se resolve karta hai.
-    Agar koi @name channel/group ka nikla to True (spam).
+    Agar koi @name kisi bot ka ho, ya channel/group ka nikla to True (spam).
     User ka @name, ya jo resolve na ho (users aksar resolve nahi hote), allowed hai.
     """
     try:
@@ -96,6 +96,9 @@ async def _has_channel_or_group_mention(message, context) -> bool:
         if name in seen:
             continue
         seen.add(name)
+        # Bot ka username hamesha "bot" par khatam hota hai (users ka nahi) => spam
+        if name.endswith("bot"):
+            return True
         try:
             chat_obj = await context.bot.get_chat(name)
         except Exception:
