@@ -22,8 +22,8 @@ import database as db
 from config import BOT_TOKEN
  
 from handlers.setup import start_command, help_command, rules_command, get_file_id_command
-from handlers.settings import settings_command, settings_toggle_callback, setlanguage_command, setchannel_command, setgroup_command, setlogchat_command
-from handlers.admin import add_admin_command, remove_admin_command, ban_command, unban_command, mute_command, unmute_command, warn_command
+from handlers.settings import settings_command, settings_toggle_callback, settings_close_callback, setlanguage_command, setchannel_command, setgroup_command, setlogchat_command
+from handlers.admin import add_admin_command, remove_admin_command, ban_command, unban_command, mute_command, unmute_command, warn_command, delete_command
 from handlers.welcome import auto_accept_join_request, welcome_new_member, member_left, chat_member_update, language_callback, language_command
 from handlers.force_join import force_join_check, verify_callback
 from handlers.moderation import moderation_check
@@ -97,6 +97,7 @@ async def _post_init(application):
         BotCommand("mute", "Mute a user (reply to their message)"),
         BotCommand("unmute", "Unmute a user (reply to their message)"),
         BotCommand("warn", "Warn a user (reply to their message)"),
+        BotCommand("delete", "Delete a message (reply, admins only)"),
         BotCommand("addadmin", "Give a user bot-admin permissions (reply)"),
         BotCommand("removeadmin", "Remove a user's bot-admin permissions (reply)"),
         BotCommand("getfileid", "Get the file_id of a photo/video/document (reply)"),
@@ -134,6 +135,7 @@ def build_application():
     app.add_handler(CommandHandler("mute", mute_command))
     app.add_handler(CommandHandler("unmute", unmute_command))
     app.add_handler(CommandHandler("warn", warn_command))
+    app.add_handler(CommandHandler("delete", delete_command))
  
     # Bot-owner commands (sirf OWNER_ID)
     app.add_handler(CommandHandler("stats", stats_command, filters=filters.ChatType.PRIVATE))
@@ -157,6 +159,7 @@ def build_application():
  
     # Callback buttons
     app.add_handler(CallbackQueryHandler(settings_toggle_callback, pattern="^toggle_"))
+    app.add_handler(CallbackQueryHandler(settings_close_callback, pattern="^close_settings$"))
     app.add_handler(CallbackQueryHandler(language_callback, pattern="^setlang_"))
     app.add_handler(CallbackQueryHandler(verify_callback, pattern="^force_join_verify$"))
     return app
