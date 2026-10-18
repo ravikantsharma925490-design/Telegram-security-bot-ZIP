@@ -148,11 +148,47 @@ async def _goodbye_member(context, chat, member, left_by_self):
  
  
 # ---- Raasta 1: service messages ----
+async def _remove_bot_if_not_allowed(context, chat, member, adder) -> bool:
+    """
+    "Block Bot Adding" ON ho aur koi normal member bot add kare to us bot ko group se nikal deta hai.
+    Owner/admin ke add kiye bot rehte hain. True = bot hata diya gaya.
+    """
+    if not getattr(member, "is_bot", False) or member.id == context.bot.id:
+        return False
+    if adder is None or adder.id == member.id:
+        return False
+    group = db.get_group(chat.id)
+    if not group.get("block_bot_add", 0):
+        return False
+ 
+    from handlers.admin import is_authorized_admin
+    if await is_authorized_admin(chat.id, adder.id, context=context):
+        return False
+ 
+    try:
+        await chat.ban_member(member.id)
+        await chat.unban_member(member.id, only_if_banned=True)  # kick (admin baad mein phir add kar sakta hai)
+    except Exception:
+        log.exception("could not remove bot %s from chat %s (bot admin + Ban users permission chahiye)", member.id, chat.id)
+        return False
+ 
+    try:
+        await context.bot.send_message(
+            chat.id,
+            f"🤖 @{member.username or member.full_name} was removed. Only admins can add bots to this group.",
+        )
+    except Exception:
+        pass
+    return True
+ 
+ 
 async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Jab naya member group mein aaye ("X joined" service message aaye) — welcome."""
     chat = update.effective_chat
     try:
         for member in update.message.new_chat_members:
+            if await _remove_bot_if_not_allowed(context, chat, member, update.message.from_user):
+                continue
             await _welcome_member(context, chat, member, reply_to=update.message.message_id)
     except Exception:
         log.exception("welcome_new_member failed in chat %s", chat.id)
@@ -192,6 +228,8 @@ async def chat_member_update(update: Update, context: ContextTypes.DEFAULT_TYPE)
  
     try:
         if not was_in and is_in:
+            if await _remove_bot_if_not_allowed(context, chat, user, cmu.from_user):
+                return
             await _welcome_member(context, chat, user)
         elif was_in and not is_in and new.status == "left":
             actor = cmu.from_user
@@ -222,4 +260,5 @@ async def language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(t(code, "language_set"), reply_markup=_language_keyboard())
     except Exception:
         pass
+ 
  
