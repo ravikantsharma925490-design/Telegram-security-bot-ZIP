@@ -22,7 +22,7 @@ import database as db
 from config import BOT_TOKEN
  
 from handlers.setup import start_command, help_command, rules_command, get_file_id_command
-from handlers.settings import settings_command, settings_toggle_callback, setlanguage_command, setchannel_command, setgroup_command, setlogchat_command
+from handlers.settings import settings_command, settings_toggle_callback, setlanguage_command, setchannel_command, setgroup_command, setlogchat_command, setwarnlimit_command
 from handlers.admin import add_admin_command, remove_admin_command, ban_command, unban_command, mute_command, unmute_command, warn_command
 from handlers.welcome import auto_accept_join_request, welcome_new_member, member_left, chat_member_update, language_callback, language_command
 from handlers.force_join import force_join_check, verify_callback
@@ -91,6 +91,7 @@ async def _post_init(application):
         BotCommand("setgroup", "Set required group for Force Join (admins)"),
         BotCommand("setlanguage", "Set the group's default language (admins)"),
         BotCommand("setlogchat", "Set the chat for security logs (admins)"),
+        BotCommand("setwarnlimit", "Set how many warnings before restrict (admins)"),
         BotCommand("language", "Choose your own personal language"),
         BotCommand("ban", "Ban a user (reply to their message)"),
         BotCommand("unban", "Unban a user (reply to their message)"),
@@ -125,6 +126,7 @@ def build_application():
     app.add_handler(CommandHandler("setchannel", setchannel_command))
     app.add_handler(CommandHandler("setgroup", setgroup_command))
     app.add_handler(CommandHandler("setlogchat", setlogchat_command))
+    app.add_handler(CommandHandler("setwarnlimit", setwarnlimit_command))
  
     # Admin commands
     app.add_handler(CommandHandler("addadmin", add_admin_command))
@@ -172,6 +174,7 @@ def main():
  
 if __name__ == "__main__":
     main()
+ 
  
  
  
