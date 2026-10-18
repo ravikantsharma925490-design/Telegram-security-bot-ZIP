@@ -80,6 +80,31 @@ def _is_flooding(chat_id: int, user_id: int) -> bool:
     return db.add_flood_hit(chat_id, user_id, FLOOD_TIME_WINDOW) > FLOOD_MESSAGE_LIMIT
  
  
+async def _has_channel_or_group_mention(message, context) -> bool:
+    """
+    Message ke har @name ko Telegram se resolve karta hai.
+    Agar koi @name channel/group ka nikla to True (spam).
+    User ka @name, ya jo resolve na ho (users aksar resolve nahi hote), allowed hai.
+    """
+    try:
+        mentions = list(message.parse_entities(["mention"]).values())
+    except Exception:
+        return False
+    seen = set()
+    for m in mentions[:5]:  # max 5 mentions check karte hain (speed ke liye)
+        name = m.lower()
+        if name in seen:
+            continue
+        seen.add(name)
+        try:
+            chat_obj = await context.bot.get_chat(name)
+        except Exception:
+            continue  # resolve nahi hua => user maana, kuch nahi karna
+        if chat_obj.type in ("channel", "group", "supergroup"):
+            return True
+    return False
+ 
+ 
 async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     """
     Return True agar message ko aage process hone dena hai (allowed),
@@ -133,8 +158,13 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
  
     # 3) Basic anti-spam: links/usernames bhejne par message delete + 3-din restriction
     if group["anti_spam"]:
-        link_count = message.text.count("http://") + message.text.count("https://") + message.text.count("t.me/") + message.text.count("@")
-        if link_count >= 1:
+        # Links (http, https, t.me) sabke liye spam hain.
+        link_count = message.text.count("http://") + message.text.count("https://") + message.text.count("t.me/")
+        # @name: sirf channel/group ka username spam hai. User ka @name allowed.
+        bad_mention = False
+        if link_count == 0 and "@" in message.text:
+            bad_mention = await _has_channel_or_group_mention(message, context)
+        if link_count >= 1 or bad_mention:
             try:
                 await message.delete()
             except Exception:
@@ -156,12 +186,13 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             await _send_restricted_message(
                 context,
                 chat.id,
-                f"{t(lang, 'spam_deleted')}\n🚫 {user.full_name} has been restricted for {LINK_SPAM_RESTRICT_DAYS} days for sending a link/username.",
+                f"{t(lang, 'spam_deleted')}\n🚫 {user.full_name} has been restricted for {LINK_SPAM_RESTRICT_DAYS} days for sending a link/channel username.",
             )
             await send_log(context, chat.id, t(lang, "log_spam", name=user.full_name))
             return False
  
     return True
+ 
  
  
  
