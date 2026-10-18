@@ -361,7 +361,7 @@ async def warn_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _issue_warning(update, context, target, reason)
  
  
-async def _issue_warning(update: Update, context: ContextTypes.DEFAULT_TYPE, target, reason):
+async def _issue_warning(update: Update, context: ContextTypes.DEFAULT_TYPE, target, reason, restrict_seconds=None):
     """
     Central warning function — moderation.py bhi ise use karta hai.
     NOTE: update.message.reply_text() use nahi karte, kyunki bad-word/spam
@@ -384,14 +384,24 @@ async def _issue_warning(update: Update, context: ContextTypes.DEFAULT_TYPE, tar
     await send_log(context, chat.id, t(lang, "log_warning", name=target.full_name, count=count, limit=limit, reason=reason))
  
     if count >= limit:
+        # restrict_seconds diya ho (link/@name spam) to utne time ke liye restrict, warna pehle jaisa
         try:
-            await chat.restrict_member(target.id, ChatPermissions(can_send_messages=False))
+            if restrict_seconds:
+                import time as _time
+                await chat.restrict_member(
+                    target.id,
+                    ChatPermissions(can_send_messages=False),
+                    until_date=int(_time.time()) + restrict_seconds,
+                )
+            else:
+                await chat.restrict_member(target.id, ChatPermissions(can_send_messages=False))
         except Exception:
             pass
-        db.block_user(chat.id, target.id, group["mute_duration"])
+        db.block_user(chat.id, target.id, restrict_seconds or group["mute_duration"])
         db.reset_warnings(chat.id, target.id)
         await context.bot.send_message(chat.id, t(lang, "warning_limit_reached", name=target.full_name))
         await send_log(context, chat.id, t(lang, "log_mute", name=target.full_name))
+ 
  
  
  
