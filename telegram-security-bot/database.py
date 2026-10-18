@@ -48,6 +48,7 @@ def init_db():
     _db.warnings.create_index([("chat_id", 1), ("user_id", 1)], unique=True)
     _db.blocked_users.create_index([("chat_id", 1), ("user_id", 1)], unique=True)
     _db.flood.create_index([("chat_id", 1), ("user_id", 1)], unique=True)
+    _db.restrict_history.create_index([("chat_id", 1), ("user_id", 1)], unique=True)
  
  
  
@@ -152,6 +153,21 @@ def reset_warnings(chat_id, user_id):
     _db.warnings.delete_one({"chat_id": chat_id, "user_id": user_id})
  
  
+# ---------- Restrict history (kitni baar warning limit se restrict hua) ----------
+ 
+def get_restrict_count(chat_id, user_id):
+    doc = _db.restrict_history.find_one({"chat_id": chat_id, "user_id": user_id})
+    return doc["count"] if doc else 0
+ 
+ 
+def add_restrict_count(chat_id, user_id):
+    _db.restrict_history.update_one(
+        {"chat_id": chat_id, "user_id": user_id},
+        {"$inc": {"count": 1}},
+        upsert=True,
+    )
+ 
+ 
 # ---------- Block helpers ----------
  
 def block_user(chat_id, user_id, duration_seconds):
@@ -203,5 +219,6 @@ def get_stats():
         "bans": _get_stat("bans"),
         "warnings": _get_stat("warnings"),
     }
+ 
  
  
