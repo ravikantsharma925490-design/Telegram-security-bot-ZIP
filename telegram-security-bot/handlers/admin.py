@@ -349,6 +349,34 @@ async def unmute_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🔊 {target_name} has been unmuted.")
  
  
+async def delete_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    /delete — kisi message par reply karke likho, bot wo message (aur apna command) delete kar dega.
+    Sirf owner/admin. Normal user ke liye kuch nahi hota (koi reply bhi nahi).
+    """
+    chat = update.effective_chat
+    user = update.effective_user
+    message = update.effective_message
+    if not message or not user or chat.type not in ("group", "supergroup"):
+        return
+    if not await is_authorized_admin(chat.id, user.id, context=context):
+        return
+ 
+    target = message.reply_to_message
+    if target is None:
+        await context.bot.send_message(chat.id, "↩️ Reply to a message with /delete to remove it.")
+        return
+ 
+    try:
+        await target.delete()
+    except Exception:
+        logger.warning("delete_command: message delete failed in chat %s (bot ko Delete messages permission chahiye)", chat.id)
+    try:
+        await message.delete()
+    except Exception:
+        pass
+ 
+ 
 async def warn_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     if not await guard_or_warn(update, context, "can_warn"):
