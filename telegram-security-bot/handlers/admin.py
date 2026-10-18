@@ -11,7 +11,7 @@ from telegram.ext import ContextTypes
 import database as db
 from utils.lang import t
 from handlers.logger import send_log
-from config import BANNED_IMAGE, UNBANNED_IMAGE, WARNING_IMAGE
+from config import BANNED_IMAGE, UNBANNED_IMAGE, WARNING_IMAGE, DEFAULT_WARNING_LIMIT
  
 import logging
 import os as _os
@@ -375,7 +375,7 @@ async def _issue_warning(update: Update, context: ContextTypes.DEFAULT_TYPE, tar
     lang = db.get_effective_language(chat.id, target.id)  # target user ki apni language
     count = db.add_warning(chat.id, target.id)
     db.incr_stat("warnings")
-    limit = group["warning_limit"]
+    limit = DEFAULT_WARNING_LIMIT  # config.py se (DB ki purani value ignore)
  
     await send_photo_or_text(
         context, chat.id, WARNING_IMAGE,
@@ -401,6 +401,7 @@ async def _issue_warning(update: Update, context: ContextTypes.DEFAULT_TYPE, tar
         db.reset_warnings(chat.id, target.id)
         await context.bot.send_message(chat.id, t(lang, "warning_limit_reached", name=target.full_name))
         await send_log(context, chat.id, t(lang, "log_mute", name=target.full_name))
+ 
  
  
  
