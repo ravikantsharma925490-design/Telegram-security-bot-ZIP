@@ -20,7 +20,7 @@ from telegram.ext import ContextTypes
  
 import database as db
 from utils.lang import t, LANGUAGE_NAMES
-from config import GROUP_WELCOME_IMAGES, GOODBYE_IMAGE
+from config import GROUP_WELCOME_IMAGES, GOODBYE_IMAGE, GROUP_ADDED_IMAGE
 from handlers.admin import send_photo_or_text
 from handlers.logger import send_log
  
@@ -265,4 +265,38 @@ async def language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pass
  
  
+ 
+ 
+# ---- Bot ko kisi group mein add kiya jaye to intro message (photo + button) ----
+async def bot_added_to_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """my_chat_member: bot ka apna status badla. Bot group mein naya aaya ho to ek baar intro bhejta hai."""
+    mcm = update.my_chat_member
+    if mcm is None:
+        return
+    chat = mcm.chat
+    if chat.type not in ("group", "supergroup"):
+        return
+ 
+    was_in, is_in = _is_in(mcm.old_chat_member), _is_in(mcm.new_chat_member)
+    if was_in or not is_in:
+        return  # sirf "bahar se andar" wala case (admin ban-na ya restrict badalna nahi)
+ 
+    try:
+        if not _first_time("botadd", chat.id, mcm.new_chat_member.user.id):
+            return
+        group = db.get_group(chat.id)
+        lang = group.get("default_language", "en")
+        username = context.bot.username or (await context.bot.get_me()).username
+        keyboard = InlineKeyboardMarkup([[
+            InlineKeyboardButton(
+                t(lang, "bot_added_button"),
+                url=f"https://t.me/{username}?startgroup=true",
+            )
+        ]])
+        await send_photo_or_text(
+            context, chat.id, GROUP_ADDED_IMAGE, t(lang, "bot_added"),
+            reply_markup=keyboard,
+        )
+    except Exception:
+        log.exception("bot_added_to_group failed in chat %s", chat.id)
  
