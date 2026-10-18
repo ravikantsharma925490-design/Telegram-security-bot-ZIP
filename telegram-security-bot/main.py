@@ -24,7 +24,7 @@ from config import BOT_TOKEN
 from handlers.setup import start_command, help_command, rules_command, get_file_id_command
 from handlers.settings import settings_command, settings_toggle_callback, settings_close_callback, setlanguage_command, setchannel_command, setgroup_command, setlogchat_command
 from handlers.admin import add_admin_command, remove_admin_command, ban_command, unban_command, mute_command, unmute_command, warn_command, delete_command
-from handlers.welcome import auto_accept_join_request, welcome_new_member, member_left, chat_member_update, language_callback, language_command
+from handlers.welcome import auto_accept_join_request, welcome_new_member, member_left, chat_member_update, bot_added_to_group, language_callback, language_command
 from handlers.force_join import force_join_check, verify_callback
 from handlers.moderation import moderation_check
 from handlers.media_filter import media_moderation_check
@@ -151,6 +151,9 @@ def build_application():
     # chat_member updates: jin groups mein 'joined/left' service message nahi aata wahan welcome/goodbye yahin se
     app.add_handler(ChatMemberHandler(chat_member_update, ChatMemberHandler.CHAT_MEMBER))
  
+    # Bot ko kisi group mein add kiya jaye to intro message (photo + 'Add me' button)
+    app.add_handler(ChatMemberHandler(bot_added_to_group, ChatMemberHandler.MY_CHAT_MEMBER))
+ 
     # Normal group messages -> force join + moderation + media checks
     app.add_handler(MessageHandler(
         filters.ChatType.GROUPS & ~filters.StatusUpdate.ALL,
@@ -175,6 +178,7 @@ def main():
  
 if __name__ == "__main__":
     main()
+ 
  
  
  
