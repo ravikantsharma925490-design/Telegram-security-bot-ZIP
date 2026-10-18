@@ -175,4 +175,20 @@ async def setgroup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
  
  
+async def setwarnlimit_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    /setwarnlimit <number> — kitni warnings ke baad user restrict ho (1 se 20).
+    Example: /setwarnlimit 5
+    """
+    chat = update.effective_chat
+    if not await owner_guard_or_warn(update, context):
+        return
+ 
+    if not context.args or not context.args[0].isdigit() or not (1 <= int(context.args[0]) <= 20):
+        await update.message.reply_text("⚠️ Use: `/setwarnlimit 5` (1 se 20 ke beech number)", parse_mode="Markdown")
+        return
+ 
+    limit = int(context.args[0])
+    db.update_group(chat.id, warning_limit=limit)
+    await update.message.reply_text(f"✅ Warning limit set to {limit}. Itni warnings ke baad user restrict hoga.")
  
