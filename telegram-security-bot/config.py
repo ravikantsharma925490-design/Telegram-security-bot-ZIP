@@ -72,6 +72,13 @@ def _to_raw(url):
 GROUP_WELCOME_IMAGES = [_to_raw(u) for u in _RAW_WELCOME_IMAGES]
  
  
+# Bot ko kisi group mein add karne par jo photo jayegi (GitHub par images/group_added.jpg)
+GROUP_ADDED_IMAGE = _to_raw(os.environ.get(
+    "GROUP_ADDED_IMAGE",
+    "https://raw.githubusercontent.com/ravikantsharma925490-design/Telegram-security-bot-ZIP/main/images/group_added.jpg",
+))
+ 
+ 
 # Restrict hone par jo photo message ke saath jayegi (GitHub par images/restricted.jpg)
 RESTRICTED_IMAGE = _to_raw(os.environ.get(
     "RESTRICTED_IMAGE",
@@ -105,5 +112,6 @@ GOODBYE_IMAGE = _to_raw(os.environ.get(
     "GOODBYE_IMAGE",
     "https://github.com/ravikantsharma925490-design/Telegram-security-bot-ZIP/blob/main/images/goodbye.jpg",
 ).strip())
+ 
  
  
