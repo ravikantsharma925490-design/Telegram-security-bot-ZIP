@@ -36,7 +36,7 @@ def _find_local_image(name):
     return None
  
  
-async def send_photo_or_text(context, chat_id, image_url, text, reply_to=None, parse_mode=None):
+async def send_photo_or_text(context, chat_id, image_url, text, reply_to=None, parse_mode=None, reply_markup=None):
     """Photo + caption bhejta hai. Order: cached file_id -> local file upload -> URL -> sirf text.
     Har fail ka asli reason log mein dikhta hai (Render logs)."""
     if image_url:
@@ -46,7 +46,7 @@ async def send_photo_or_text(context, chat_id, image_url, text, reply_to=None, p
         file_id = _file_id_cache.get(name)
         if file_id:
             try:
-                await context.bot.send_photo(chat_id, photo=file_id, caption=caption, reply_to_message_id=reply_to, parse_mode=parse_mode)
+                await context.bot.send_photo(chat_id, photo=file_id, caption=caption, reply_to_message_id=reply_to, parse_mode=parse_mode, reply_markup=reply_markup)
                 return
             except Exception as e:
                 logger.warning("send_photo (file_id) failed for %s: %s", name, e)
@@ -56,7 +56,7 @@ async def send_photo_or_text(context, chat_id, image_url, text, reply_to=None, p
         if local:
             try:
                 with open(local, "rb") as f:
-                    msg = await context.bot.send_photo(chat_id, photo=f, caption=caption, reply_to_message_id=reply_to, parse_mode=parse_mode)
+                    msg = await context.bot.send_photo(chat_id, photo=f, caption=caption, reply_to_message_id=reply_to, parse_mode=parse_mode, reply_markup=reply_markup)
                 if msg and msg.photo:
                     _file_id_cache[name] = msg.photo[-1].file_id
                 return
@@ -66,12 +66,12 @@ async def send_photo_or_text(context, chat_id, image_url, text, reply_to=None, p
             logger.warning("Local image '%s' nahi mili. Dhoondhe: %s", name, _IMAGE_DIRS)
  
         try:
-            await context.bot.send_photo(chat_id, photo=image_url, caption=caption, reply_to_message_id=reply_to, parse_mode=parse_mode)
+            await context.bot.send_photo(chat_id, photo=image_url, caption=caption, reply_to_message_id=reply_to, parse_mode=parse_mode, reply_markup=reply_markup)
             return
         except Exception as e:
             logger.warning("send_photo (URL %s) failed: %s", image_url, e)
  
-    await context.bot.send_message(chat_id, text, reply_to_message_id=reply_to, parse_mode=parse_mode)
+    await context.bot.send_message(chat_id, text, reply_to_message_id=reply_to, parse_mode=parse_mode, reply_markup=reply_markup)
  
  
  
