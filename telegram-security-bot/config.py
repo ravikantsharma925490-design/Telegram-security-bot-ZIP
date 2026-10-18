@@ -16,7 +16,7 @@ MONGO_DB_NAME = os.environ.get("MONGO_DB_NAME", "telegram_security_bot")
 DEFAULT_LANGUAGE = "en"
  
 # Default warning limit (kitni warnings ke baad auto-mute/ban)
-DEFAULT_WARNING_LIMIT = 3
+DEFAULT_WARNING_LIMIT = 5
  
 # Default temporary mute/block duration (seconds mein)
 DEFAULT_MUTE_DURATION = 60 * 60          # 1 ghanta
@@ -105,4 +105,5 @@ GOODBYE_IMAGE = _to_raw(os.environ.get(
     "GOODBYE_IMAGE",
     "https://github.com/ravikantsharma925490-design/Telegram-security-bot-ZIP/blob/main/images/goodbye.jpg",
 ).strip())
+ 
  
