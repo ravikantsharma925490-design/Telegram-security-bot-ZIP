@@ -32,6 +32,7 @@ DEFAULT_GROUP = {
     "admin_alerts": 1,
     "log_chat_id": 0,
     "auto_accept_requests": 1,
+    "block_bot_add": 0,
     "setup_done": 0,
 }
  
@@ -83,7 +84,7 @@ def update_group(chat_id, **kwargs):
  
 def toggle_group_setting(chat_id, field):
     group = get_group(chat_id)
-    new_val = 0 if group[field] else 1
+    new_val = 0 if group.get(field, 0) else 1
     update_group(chat_id, **{field: new_val})
     return new_val
  
