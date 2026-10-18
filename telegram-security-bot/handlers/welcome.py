@@ -9,6 +9,7 @@ Jin groups mein Telegram service message nahi bhejta, wahan raasta 2 kaam karta 
 Jahan dono aate hain wahan MongoDB dedupe se welcome sirf EK baar jata hai.
 """
  
+import html
 import logging
 import os
 import random
@@ -86,18 +87,18 @@ def _next_photo(chat_id):
     return photo
  
  
-async def _send_photo_message(context, chat_id, text, reply_to=None):
+async def _send_photo_message(context, chat_id, text, reply_to=None, parse_mode=None):
     """Welcome photo (rotation se) + text. Reply wala message delete ho gaya ho to bina reply ke dobara try."""
     url = _next_photo(chat_id) if GROUP_WELCOME_IMAGES else None
     try:
-        await send_photo_or_text(context, chat_id, url, text, reply_to=reply_to)
+        await send_photo_or_text(context, chat_id, url, text, reply_to=reply_to, parse_mode=parse_mode)
         return
     except Exception as e:
         log.warning("welcome send failed (reply_to=%s): %s", reply_to, e)
  
     if reply_to is not None:
         try:
-            await send_photo_or_text(context, chat_id, url, text, reply_to=None)
+            await send_photo_or_text(context, chat_id, url, text, reply_to=None, parse_mode=parse_mode)
         except Exception as e:
             log.warning("welcome send failed again without reply: %s", e)
  
@@ -119,8 +120,10 @@ async def _welcome_member(context, chat, member, reply_to=None):
         return
     group = db.get_group(chat.id)
     lang = group.get("default_language", "en")
-    text = t(lang, "welcome", name=member.full_name)
-    await _send_photo_message(context, chat.id, text, reply_to=reply_to)
+    # Clickable naam: tg://user?id= link (username na ho tab bhi chalta hai). HTML escape zaroori hai.
+    mention = f'<a href="tg://user?id={member.id}">{html.escape(member.full_name)}</a>'
+    text = t(lang, "welcome", name=mention)
+    await _send_photo_message(context, chat.id, text, reply_to=reply_to, parse_mode="HTML")
     try:
         await send_log(context, chat.id, t(lang, "log_user_joined", name=member.full_name))
     except Exception:
@@ -260,5 +263,6 @@ async def language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(t(code, "language_set"), reply_markup=_language_keyboard())
     except Exception:
         pass
+ 
  
  
