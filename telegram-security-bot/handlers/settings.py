@@ -31,6 +31,7 @@ def _settings_keyboard(group):
     for field, label in TOGGLE_FIELDS:
         state = "✅" if group.get(field, 0) else "❌"
         buttons.append([InlineKeyboardButton(f"{state} {label}", callback_data=f"toggle_{field}")])
+    buttons.append([InlineKeyboardButton("🗑 Close", callback_data="close_settings")])
     return InlineKeyboardMarkup(buttons)
  
  
@@ -40,11 +41,17 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     group = db.get_group(chat.id)
     lang = group["default_language"]
-    await update.message.reply_text(
+    await context.bot.send_message(
+        chat.id,
         t(lang, "settings_title"),
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=_settings_keyboard(group),
     )
+    # Menu bhejne ke baad aapka /settings command message delete (bot ko 'Delete messages' permission chahiye)
+    try:
+        await update.message.delete()
+    except Exception:
+        pass
  
  
 async def settings_toggle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -62,6 +69,24 @@ async def settings_toggle_callback(update: Update, context: ContextTypes.DEFAULT
     group = db.get_group(chat.id)
     await query.edit_message_reply_markup(reply_markup=_settings_keyboard(group))
     await query.answer("✅ Updated")
+ 
+ 
+async def settings_close_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """🗑 Close button: sirf owner/admin settings menu delete kar sakta hai. Normal user ke liye kuch nahi hota."""
+    query = update.callback_query
+    chat = update.effective_chat
+    user = update.effective_user
+ 
+    from handlers.admin import is_authorized_admin
+    if not await is_authorized_admin(chat.id, user.id, context=context):
+        await query.answer()
+        return
+ 
+    await query.answer()
+    try:
+        await query.message.delete()
+    except Exception:
+        pass
  
  
 async def setlanguage_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
