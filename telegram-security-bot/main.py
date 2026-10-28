@@ -27,6 +27,7 @@ from handlers.admin import add_admin_command, remove_admin_command, ban_command,
 from handlers.welcome import auto_accept_join_request, welcome_new_member, member_left, chat_member_update, bot_added_to_group, language_callback, language_command
 from handlers.force_join import force_join_check, verify_callback
 from handlers.moderation import moderation_check
+from handlers.anti_forward import anti_forward_check
 from handlers.media_filter import media_moderation_check
 from handlers.owner import stats_command, groups_command
  
@@ -38,8 +39,13 @@ logger = logging.getLogger(__name__)
  
  
 async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Har normal group message yaha se guzarta hai: force join -> moderation -> media check."""
+    """Har normal group message yaha se guzarta hai: anti-forward -> force join -> moderation -> media check."""
     if not update.effective_message or update.effective_chat.type not in ("group", "supergroup"):
+        return
+ 
+    # Sabse pehle: normal member ka forward ho to turant delete (owner/admin exempt)
+    allowed = await anti_forward_check(update, context)
+    if not allowed:
         return
  
     allowed = await force_join_check(update, context)
@@ -178,6 +184,7 @@ def main():
  
 if __name__ == "__main__":
     main()
+ 
  
  
  
