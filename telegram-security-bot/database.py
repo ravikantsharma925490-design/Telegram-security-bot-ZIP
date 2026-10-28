@@ -50,6 +50,7 @@ def init_db():
     _db.blocked_users.create_index([("chat_id", 1), ("user_id", 1)], unique=True)
     _db.flood.create_index([("chat_id", 1), ("user_id", 1)], unique=True)
     _db.restrict_history.create_index([("chat_id", 1), ("user_id", 1)], unique=True)
+    _db.bio_checks.create_index([("chat_id", 1), ("user_id", 1)], unique=True)
  
  
  
@@ -65,6 +66,21 @@ def add_flood_hit(chat_id, user_id, window):
         return_document=ReturnDocument.AFTER,
     )
     return sum(1 for ts in doc["ts"] if now - ts < window)
+ 
+ 
+# ---------- Bio-link check state ----------
+ 
+def get_bio_state(chat_id, user_id):
+    """Is user ki bio kab check hui aur notice ja chuka hai ya nahi."""
+    return _db.bio_checks.find_one({"chat_id": chat_id, "user_id": user_id})
+ 
+ 
+def set_bio_state(chat_id, user_id, notified):
+    _db.bio_checks.update_one(
+        {"chat_id": chat_id, "user_id": user_id},
+        {"$set": {"checked_at": time.time(), "notified": bool(notified)}},
+        upsert=True,
+    )
  
  
 # ---------- Group config helpers ----------
@@ -220,6 +236,7 @@ def get_stats():
         "bans": _get_stat("bans"),
         "warnings": _get_stat("warnings"),
     }
+ 
  
  
  
