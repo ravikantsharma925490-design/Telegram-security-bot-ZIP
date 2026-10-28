@@ -28,6 +28,7 @@ from handlers.welcome import auto_accept_join_request, welcome_new_member, membe
 from handlers.force_join import force_join_check, verify_callback
 from handlers.moderation import moderation_check
 from handlers.anti_forward import anti_forward_check
+from handlers.bio_link import bio_link_check
 from handlers.media_filter import media_moderation_check
 from handlers.owner import stats_command, groups_command
  
@@ -39,7 +40,7 @@ logger = logging.getLogger(__name__)
  
  
 async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Har normal group message yaha se guzarta hai: anti-forward -> force join -> moderation -> media check."""
+    """Har normal group message yaha se guzarta hai: anti-forward -> bio-link notice -> force join -> moderation -> media check."""
     if not update.effective_message or update.effective_chat.type not in ("group", "supergroup"):
         return
  
@@ -47,6 +48,9 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
     allowed = await anti_forward_check(update, context)
     if not allowed:
         return
+ 
+    # Bio mein link ho to user + owner ko bata do (message nahi rokta)
+    await bio_link_check(update, context)
  
     allowed = await force_join_check(update, context)
     if not allowed:
