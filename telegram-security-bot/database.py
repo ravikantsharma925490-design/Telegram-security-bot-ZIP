@@ -75,10 +75,14 @@ def get_bio_state(chat_id, user_id):
     return _db.bio_checks.find_one({"chat_id": chat_id, "user_id": user_id})
  
  
-def set_bio_state(chat_id, user_id, notified):
+def set_bio_state(chat_id, user_id, notified_now=False):
+    """checked_at hamesha taza hota hai; notified_at tabhi badalta hai jab notice bheja gaya."""
+    fields = {"checked_at": time.time()}
+    if notified_now:
+        fields["notified_at"] = time.time()
     _db.bio_checks.update_one(
         {"chat_id": chat_id, "user_id": user_id},
-        {"$set": {"checked_at": time.time(), "notified": bool(notified)}},
+        {"$set": fields},
         upsert=True,
     )
  
