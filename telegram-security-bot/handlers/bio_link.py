@@ -3,7 +3,7 @@ Bio-link check — kisi member ki profile bio mein link ho to group mein usko au
 group owner ko mention karke English mein bata deta hai. Message delete nahi
 hota, koi warning/restrict/ban nahi. Owner ko DM mein bhi ek baar batata hai.
  
-- Bio har user ki ek group mein 10 minute mein sirf ek baar check hoti hai (speed ke liye).
+- Bio HAR message par check hoti hai (koi 10 minute ki rukawat nahi).
 - Ek user ke liye notice 24 ghante mein sirf ek baar jata hai (bio saaf karke dobara
   link lagaye tab bhi 24 ghante se pehle dobara nahi aata).
 - Owner/admin par ye check lagta hi nahi.
@@ -23,8 +23,8 @@ from handlers.admin import is_authorized_admin
  
 logger = logging.getLogger(__name__)
  
-# Bio kitni der mein dobara check hogi (seconds)
-BIO_CHECK_INTERVAL = 600
+# Bio kitni der mein dobara check hogi (seconds). 0 = har message par check.
+BIO_CHECK_INTERVAL = 0
  
 # Ek user ke liye notice kitne ghante mein sirf ek baar (seconds)
 NOTICE_COOLDOWN = 24 * 60 * 60
@@ -84,7 +84,7 @@ async def _bio_link_check(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
  
     state = db.get_bio_state(chat.id, user.id)
     now = time.time()
-    if state and now - state.get("checked_at", 0) < BIO_CHECK_INTERVAL:
+    if BIO_CHECK_INTERVAL and state and now - state.get("checked_at", 0) < BIO_CHECK_INTERVAL:
         return  # abhi haal hi mein check ho chuka hai
  
     # Bio Telegram se padho
@@ -125,4 +125,5 @@ async def _bio_link_check(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             )
         except Exception:
             pass  # DM band ho ya owner ne /start na kiya ho => group notice kaafi hai
+ 
  
