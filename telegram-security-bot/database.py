@@ -55,6 +55,7 @@ def init_db():
     _db.group_bots.create_index([("chat_id", 1), ("username", 1)])
     _db.group_users.create_index([("chat_id", 1), ("user_id", 1)], unique=True)
     _db.group_users.create_index([("chat_id", 1), ("username", 1)])
+    _db.bot_users.create_index("user_id", unique=True)
  
  
  
@@ -129,6 +130,68 @@ def is_saved_user(chat_id, user_id):
 def get_saved_user_by_username(chat_id, username):
     return _db.group_users.find_one(
         {"chat_id": chat_id, "username": (username or "").lstrip("@").lower()}
+    )
+ 
+ 
+# ---------- Bot ke private users (jinhone bot ko /start ya message kiya) ----------
+ 
+_bot_user_cache = {}  # user_id -> (username, name)
+ 
+ 
+def save_bot_user(user_id, username, name):
+    username = (username or "").lstrip("@").lower()
+    name = name or ""
+    if _bot_user_cache.get(user_id) == (username, name):
+        return
+    _db.bot_users.update_one(
+        {"user_id": user_id},
+        {"$set": {"username": username, "name": name}, "$setOnInsert": {"started_at": time.time()}},
+        upsert=True,
+    )
+    if len(_bot_user_cache) > 50000:
+        _bot_user_cache.clear()
+    _bot_user_cache[user_id] = (username, name)
+ 
+ 
+def remove_bot_user(user_id):
+    """User ne bot block kar diya => list se hata do."""
+    _bot_user_cache.pop(user_id, None)
+    _db.bot_users.delete_one({"user_id": user_id})
+ 
+ 
+def list_bot_user_ids():
+    return [d["user_id"] for d in _db.bot_users.find({}, {"user_id": 1})]
+ 
+ 
+# ---------- Broadcast job (ek time par ek) ----------
+ 
+def save_broadcast_job(job):
+    _db.broadcast_job.replace_one({"_id": "current"}, job, upsert=True)
+ 
+ 
+def get_broadcast_job():
+    return _db.broadcast_job.find_one({"_id": "current"})
+ 
+ 
+def update_broadcast_job(**fields):
+    _db.broadcast_job.update_one({"_id": "current"}, {"$set": fields})
+ 
+ 
+def delete_broadcast_job():
+    _db.broadcast_job.delete_one({"_id": "current"})
+ 
+ 
+def claim_broadcast_job(statuses, lock_seconds):
+    """Job ko atomically 'running' + lock karta hai (double-tap par do baar nahi chalega). None = nahi mila/locked."""
+    now = time.time()
+    return _db.broadcast_job.find_one_and_update(
+        {
+            "_id": "current",
+            "status": {"$in": statuses},
+            "$or": [{"locked_until": {"$exists": False}}, {"locked_until": {"$lt": now}}],
+        },
+        {"$set": {"status": "running", "locked_until": now + lock_seconds}},
+        return_document=ReturnDocument.AFTER,
     )
  
  
