@@ -80,32 +80,94 @@ def _is_flooding(chat_id: int, user_id: int) -> bool:
     return db.add_flood_hit(chat_id, user_id, FLOOD_TIME_WINDOW) > FLOOD_MESSAGE_LIMIT
  
  
-async def _has_channel_or_group_mention(message, context) -> bool:
+def _is_present(member) -> bool:
+    """Kya ye user/bot abhi group ka member hai? (left/kicked = nahi)"""
+    if member.status in ("member", "administrator", "creator"):
+        return True
+    return member.status == "restricted" and bool(getattr(member, "is_member", False))
+ 
+ 
+async def _bot_missing_from_group(context, chat_id, name) -> bool:
     """
-    Message ke har @name ko Telegram se resolve karta hai.
-    Agar koi @name kisi bot ka ho, ya channel/group ka nikla to True (spam).
-    User ka @name, ya jo resolve na ho (users aksar resolve nahi hote), allowed hai.
+    name = "@xyzbot". True = ye bot is group mein NAHI hai (spam/warning).
+    False = bot group mein hai, ya verify nahi ho paya (tab kuch nahi karte).
+    Pehle database (group mein add hue bots), warna Telegram se khud check.
+    """
+    uname = name.lstrip("@").lower()
+    my_name = (context.bot.username or (await context.bot.get_me()).username or "").lower()
+    if uname == my_name:
+        return False
+    if db.is_group_bot(chat_id, uname):
+        return False
+    try:
+        chat_obj = await context.bot.get_chat("@" + uname)
+    except Exception:
+        return False  # resolve nahi hua => verify nahi kar sakte, kuch nahi
+    if chat_obj.type in ("channel", "group", "supergroup"):
+        return True  # "...bot" naam ka channel/group => spam
+    try:
+        member = await context.bot.get_chat_member(chat_id, chat_obj.id)
+    except Exception:
+        return False
+    if _is_present(member):
+        db.add_group_bot(chat_id, chat_obj.id, uname)  # aage se database se hi pata chal jayega
+        return False
+    return True
+ 
+ 
+async def _id_mention_missing_from_group(context, chat_id, message) -> bool:
+    """
+    ID se mention (clickable naam / text_mention) ke liye: mention kiya gaya user
+    group mein nahi hai to True. Group mein hai ya check fail ho to False.
+    """
+    seen = set()
+    for ent in (message.entities or []):
+        if ent.type != "text_mention" or not ent.user:
+            continue
+        uid = ent.user.id
+        if uid == context.bot.id or uid in seen:
+            continue
+        seen.add(uid)
+        if len(seen) > 5:  # speed ke liye max 5
+            break
+        try:
+            member = await context.bot.get_chat_member(chat_id, uid)
+        except Exception:
+            continue  # verify nahi hua => kuch nahi
+        if not _is_present(member):
+            return True
+    return False
+ 
+ 
+async def _has_bad_mention(message, context, chat_id) -> bool:
+    """
+    True = message spam maana jayega:
+      - @channel / @group username
+      - @xyzbot jo is group mein NAHI hai (group wala bot allowed)
+      - ID se mention kiya user jo group mein NAHI hai (group wala user allowed)
+    User ka sirf @username allowed (Telegram se member status verify nahi hota).
     """
     try:
         mentions = list(message.parse_entities(["mention"]).values())
     except Exception:
-        return False
+        mentions = []
     seen = set()
     for m in mentions[:5]:  # max 5 mentions check karte hain (speed ke liye)
         name = m.lower()
         if name in seen:
             continue
         seen.add(name)
-        # Bot ka username hamesha "bot" par khatam hota hai (users ka nahi) => spam
         if name.endswith("bot"):
-            return True
+            if await _bot_missing_from_group(context, chat_id, name):
+                return True
+            continue
         try:
             chat_obj = await context.bot.get_chat(name)
         except Exception:
             continue  # resolve nahi hua => user maana, kuch nahi karna
         if chat_obj.type in ("channel", "group", "supergroup"):
             return True
-    return False
+    return await _id_mention_missing_from_group(context, chat_id, message)
  
  
 async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
@@ -165,8 +227,9 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         link_count = message.text.count("http://") + message.text.count("https://") + message.text.count("t.me/")
         # @name: sirf channel/group ka username spam hai. User ka @name allowed.
         bad_mention = False
-        if link_count == 0 and "@" in message.text:
-            bad_mention = await _has_channel_or_group_mention(message, context)
+        has_id_mention = any(e.type == "text_mention" for e in (message.entities or []))
+        if link_count == 0 and ("@" in message.text or has_id_mention):
+            bad_mention = await _has_bad_mention(message, context, chat.id)
         if link_count >= 1 or bad_mention:
             try:
                 await message.delete()
@@ -180,6 +243,7 @@ async def moderation_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             return False
  
     return True
+ 
  
  
  
