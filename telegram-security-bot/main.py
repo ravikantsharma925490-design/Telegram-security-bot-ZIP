@@ -28,7 +28,8 @@ from handlers.welcome import auto_accept_join_request, welcome_new_member, membe
 from handlers.force_join import force_join_check, verify_callback
 from handlers.moderation import moderation_check
 from handlers.anti_forward import anti_forward_check
-from handlers.user_tracker import track_users
+from handlers.user_tracker import track_users, track_private_user
+from handlers.broadcast import broadcast_command, broadcast_callback
 from handlers.bio_link import bio_link_check
 from handlers.media_filter import media_moderation_check
 from handlers.owner import stats_command, groups_command
@@ -157,6 +158,7 @@ def build_application():
     # Bot-owner commands (sirf OWNER_ID)
     app.add_handler(CommandHandler("stats", stats_command, filters=filters.ChatType.PRIVATE))
     app.add_handler(CommandHandler("groups", groups_command, filters=filters.ChatType.PRIVATE))
+    app.add_handler(CommandHandler("broadcast", broadcast_command, filters=filters.ChatType.PRIVATE))
  
     # Join requests (auto accept)
     app.add_handler(ChatJoinRequestHandler(auto_accept_join_request))
@@ -177,7 +179,11 @@ def build_application():
         handle_group_message,
     ))
  
+    # Bot ko private mein /start / message karne wale users save (broadcast ke liye) — alag group mein, kisi handler ko nahi rokta
+    app.add_handler(MessageHandler(filters.ChatType.PRIVATE, track_private_user), group=1)
+ 
     # Callback buttons
+    app.add_handler(CallbackQueryHandler(broadcast_callback, pattern="^bc_(send|cancel|continue)$"))
     app.add_handler(CallbackQueryHandler(settings_toggle_callback, pattern="^toggle_"))
     app.add_handler(CallbackQueryHandler(settings_close_callback, pattern="^close_settings$"))
     app.add_handler(CallbackQueryHandler(language_callback, pattern="^setlang_"))
