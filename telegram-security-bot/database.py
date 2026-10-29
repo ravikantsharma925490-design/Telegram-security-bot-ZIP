@@ -51,6 +51,8 @@ def init_db():
     _db.flood.create_index([("chat_id", 1), ("user_id", 1)], unique=True)
     _db.restrict_history.create_index([("chat_id", 1), ("user_id", 1)], unique=True)
     _db.bio_checks.create_index([("chat_id", 1), ("user_id", 1)], unique=True)
+    _db.group_bots.create_index([("chat_id", 1), ("user_id", 1)], unique=True)
+    _db.group_bots.create_index([("chat_id", 1), ("username", 1)])
  
  
  
@@ -66,6 +68,28 @@ def add_flood_hit(chat_id, user_id, window):
         return_document=ReturnDocument.AFTER,
     )
     return sum(1 for ts in doc["ts"] if now - ts < window)
+ 
+ 
+# ---------- Group ke bots (kaun sa bot kis group mein hai) ----------
+ 
+def add_group_bot(chat_id, user_id, username):
+    """Group mein add hue bot ko yaad rakhta hai (username lowercase, bina @ ke)."""
+    _db.group_bots.update_one(
+        {"chat_id": chat_id, "user_id": user_id},
+        {"$set": {"username": (username or "").lstrip("@").lower()}},
+        upsert=True,
+    )
+ 
+ 
+def remove_group_bot(chat_id, user_id):
+    _db.group_bots.delete_one({"chat_id": chat_id, "user_id": user_id})
+ 
+ 
+def is_group_bot(chat_id, username):
+    """True agar ye bot (username se) is group mein yaad hai."""
+    return _db.group_bots.find_one(
+        {"chat_id": chat_id, "username": (username or "").lstrip("@").lower()}
+    ) is not None
  
  
 # ---------- Bio-link check state ----------
@@ -240,6 +264,7 @@ def get_stats():
         "bans": _get_stat("bans"),
         "warnings": _get_stat("warnings"),
     }
+ 
  
  
  
