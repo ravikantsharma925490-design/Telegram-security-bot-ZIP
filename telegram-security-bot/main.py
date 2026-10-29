@@ -28,6 +28,7 @@ from handlers.welcome import auto_accept_join_request, welcome_new_member, membe
 from handlers.force_join import force_join_check, verify_callback
 from handlers.moderation import moderation_check
 from handlers.anti_forward import anti_forward_check
+from handlers.user_tracker import track_users
 from handlers.bio_link import bio_link_check
 from handlers.media_filter import media_moderation_check
 from handlers.owner import stats_command, groups_command
@@ -43,6 +44,12 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
     """Har normal group message yaha se guzarta hai: anti-forward -> bio-link notice -> force join -> moderation -> media check."""
     if not update.effective_message or update.effective_chat.type not in ("group", "supergroup"):
         return
+ 
+    # User ko database mein save karo (sender + mentions). Sirf save, kabhi message nahi rokta.
+    try:
+        await track_users(update, context)
+    except Exception:
+        logger.exception("track_users failed")
  
     # Sabse pehle: normal member ka forward ho to turant delete (owner/admin exempt)
     allowed = await anti_forward_check(update, context)
@@ -188,6 +195,7 @@ def main():
  
 if __name__ == "__main__":
     main()
+ 
  
  
  
