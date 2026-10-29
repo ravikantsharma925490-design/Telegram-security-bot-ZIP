@@ -53,6 +53,8 @@ def init_db():
     _db.bio_checks.create_index([("chat_id", 1), ("user_id", 1)], unique=True)
     _db.group_bots.create_index([("chat_id", 1), ("user_id", 1)], unique=True)
     _db.group_bots.create_index([("chat_id", 1), ("username", 1)])
+    _db.group_users.create_index([("chat_id", 1), ("user_id", 1)], unique=True)
+    _db.group_users.create_index([("chat_id", 1), ("username", 1)])
  
  
  
@@ -90,6 +92,44 @@ def is_group_bot(chat_id, username):
     return _db.group_bots.find_one(
         {"chat_id": chat_id, "username": (username or "").lstrip("@").lower()}
     ) is not None
+ 
+ 
+# ---------- Group ke users (join / message / mention par save) ----------
+ 
+_user_cache = {}  # (chat_id, user_id) -> (username, name): same data baar-baar DB mein na likhna pade
+ 
+ 
+def save_group_user(chat_id, user_id, username, name):
+    """User ko group ke liye save/update karta hai (username lowercase, bina @ ke)."""
+    username = (username or "").lstrip("@").lower()
+    name = name or ""
+    key = (chat_id, user_id)
+    if _user_cache.get(key) == (username, name):
+        return
+    _db.group_users.update_one(
+        {"chat_id": chat_id, "user_id": user_id},
+        {"$set": {"username": username, "name": name, "saved_at": time.time()}},
+        upsert=True,
+    )
+    if len(_user_cache) > 50000:
+        _user_cache.clear()
+    _user_cache[key] = (username, name)
+ 
+ 
+def remove_group_user(chat_id, user_id):
+    """User group chhode ya ban ho to uska data hata deta hai."""
+    _user_cache.pop((chat_id, user_id), None)
+    _db.group_users.delete_one({"chat_id": chat_id, "user_id": user_id})
+ 
+ 
+def is_saved_user(chat_id, user_id):
+    return _db.group_users.find_one({"chat_id": chat_id, "user_id": user_id}) is not None
+ 
+ 
+def get_saved_user_by_username(chat_id, username):
+    return _db.group_users.find_one(
+        {"chat_id": chat_id, "username": (username or "").lstrip("@").lower()}
+    )
  
  
 # ---------- Bio-link check state ----------
