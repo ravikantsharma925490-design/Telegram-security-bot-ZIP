@@ -114,4 +114,8 @@ GOODBYE_IMAGE = _to_raw(os.environ.get(
 ).strip())
  
  
+# /broadcast ek baar mein itne second tak bhejta hai, phir "Continue" button aata hai
+# (Vercel jaise serverless par function ~10 sec mein band ho jata hai). Render jaise
+# lambe chalne wale host par env mein BROADCAST_BATCH_SECONDS=3000 daal do to ek baar mein poora jayega.
+BROADCAST_BATCH_SECONDS = float(os.environ.get("BROADCAST_BATCH_SECONDS", "7") or 7)
  
