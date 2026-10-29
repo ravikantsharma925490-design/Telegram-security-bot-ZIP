@@ -23,6 +23,7 @@ from utils.lang import t, LANGUAGE_NAMES
 from config import GROUP_WELCOME_IMAGES, GOODBYE_IMAGE, GROUP_ADDED_IMAGE
 from handlers.admin import send_photo_or_text
 from handlers.logger import send_log
+from handlers.user_tracker import save_user
  
 log = logging.getLogger(__name__)
  
@@ -186,12 +187,27 @@ async def _remove_bot_if_not_allowed(context, chat, member, adder) -> bool:
  
  
 def _remember_bot(chat_id, member, context):
-    """Group mein add hue (dusre) bot ko database mein yaad rakhta hai — bot-@mention check ke liye."""
+    """Group mein add hue member ko database mein yaad rakhta hai.
+    Bot hai to group_bots mein (bot-@mention check ke liye), user hai to group_users mein."""
     try:
-        if getattr(member, "is_bot", False) and member.id != context.bot.id and member.username:
-            db.add_group_bot(chat_id, member.id, member.username)
+        if getattr(member, "is_bot", False):
+            if member.id != context.bot.id and member.username:
+                db.add_group_bot(chat_id, member.id, member.username)
+        else:
+            save_user(chat_id, member)
     except Exception:
-        log.exception("could not remember bot %s in chat %s", getattr(member, "id", None), chat_id)
+        log.exception("could not remember member %s in chat %s", getattr(member, "id", None), chat_id)
+ 
+ 
+def _forget_member(chat_id, member):
+    """Member group se gaya/ban hua => database se hata do."""
+    try:
+        if getattr(member, "is_bot", False):
+            db.remove_group_bot(chat_id, member.id)
+        else:
+            db.remove_group_user(chat_id, member.id)
+    except Exception:
+        log.exception("could not forget member %s in chat %s", getattr(member, "id", None), chat_id)
  
  
 async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -212,8 +228,7 @@ async def member_left(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         left_member = update.message.left_chat_member
         if left_member:
-            if left_member.is_bot:
-                db.remove_group_bot(chat.id, left_member.id)
+            _forget_member(chat.id, left_member)
             sender = update.message.from_user
             left_by_self = sender is None or sender.id == left_member.id
             await _goodbye_member(context, chat, left_member, left_by_self)
@@ -247,8 +262,8 @@ async def chat_member_update(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 return
             _remember_bot(chat.id, user, context)
             await _welcome_member(context, chat, user)
-        elif was_in and not is_in and user.is_bot:
-            db.remove_group_bot(chat.id, user.id)
+        elif was_in and not is_in:
+            _forget_member(chat.id, user)
         if was_in and not is_in and new.status == "left":
             actor = cmu.from_user
             left_by_self = actor is None or actor.id == user.id
