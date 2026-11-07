@@ -37,8 +37,10 @@ async def auto_accept_join_request(update: Update, context: ContextTypes.DEFAULT
     chat = request.chat
     user = request.from_user
  
+    log.info("join request received: chat=%s user=%s", chat.id, user.id)
     group = db.get_group(chat.id)
     if not group.get("auto_accept_requests", 1):
+        log.info("auto_accept_requests is OFF in chat %s - not approving, no DM", chat.id)
         return
  
     try:
@@ -47,11 +49,19 @@ async def auto_accept_join_request(update: Update, context: ContextTypes.DEFAULT
         log.warning("approve_chat_join_request failed in chat %s: %s", chat.id, e)
         return
  
-    lang = group.get("default_language", "en")
-    await send_log(context, chat.id, t(lang, "log_auto_request_approved", name=user.full_name))
+    log.info("join request approved: chat=%s user=%s", chat.id, user.id)
  
-    # Approve ke baad user ko welcome DM (join request ke saath bina /start ke bhi chalta hai)
-    await send_join_dm(context, chat, user, dm_chat_id=getattr(request, "user_chat_id", None))
+    # Approve ke baad PEHLE user ko welcome DM (join request ke saath bina /start ke bhi chalta hai)
+    try:
+        await send_join_dm(context, chat, user, dm_chat_id=getattr(request, "user_chat_id", None))
+    except Exception:
+        log.exception("send_join_dm crashed")
+ 
+    try:
+        lang = group.get("default_language", "en")
+        await send_log(context, chat.id, t(lang, "log_auto_request_approved", name=user.full_name))
+    except Exception:
+        log.exception("send_log (auto approve) failed in chat %s", chat.id)
  
  
 # ---- Dedupe: service message + chat_member dono aayein to bhi welcome/goodbye ek hi baar ----
