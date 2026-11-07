@@ -163,6 +163,26 @@ def list_bot_user_ids():
     return [d["user_id"] for d in _db.bot_users.find({}, {"user_id": 1})]
  
  
+# ---------- Join DM (ek user ko ek group ke liye ek hi baar) ----------
+ 
+def claim_join_dm(chat_id, user_id):
+    """True = pehli baar (DM bhej sakte ho). False = pehle ja chuka / koi aur abhi bhej raha hai."""
+    from pymongo.errors import DuplicateKeyError
+    try:
+        _db.join_dms.insert_one({"_id": f"{chat_id}:{user_id}", "ts": time.time()})
+        return True
+    except DuplicateKeyError:
+        return False
+ 
+ 
+def release_join_dm(chat_id, user_id):
+    """DM fail hua to claim wapas, taaki baad mein dobara try ho sake."""
+    try:
+        _db.join_dms.delete_one({"_id": f"{chat_id}:{user_id}"})
+    except Exception:
+        pass
+ 
+ 
 # ---------- Broadcast job (ek time par ek) ----------
  
 def save_broadcast_job(job):
@@ -367,6 +387,7 @@ def get_stats():
         "bans": _get_stat("bans"),
         "warnings": _get_stat("warnings"),
     }
+ 
  
  
  
