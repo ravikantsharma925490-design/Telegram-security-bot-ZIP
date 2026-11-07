@@ -43,6 +43,13 @@ async def auto_accept_join_request(update: Update, context: ContextTypes.DEFAULT
         log.info("auto_accept_requests is OFF in chat %s - not approving, no DM", chat.id)
         return
  
+    # DM PEHLE, approve BAAD mein: Telegram join request ki DM-permission approve hote hi khatam kar deta hai
+    # (approve ke baad bhejne par 403 Forbidden aata hai).
+    try:
+        await send_join_dm(context, chat, user, dm_chat_id=getattr(request, "user_chat_id", None))
+    except Exception:
+        log.exception("send_join_dm crashed")
+ 
     try:
         await context.bot.approve_chat_join_request(chat.id, user.id)
     except Exception as e:
@@ -50,12 +57,6 @@ async def auto_accept_join_request(update: Update, context: ContextTypes.DEFAULT
         return
  
     log.info("join request approved: chat=%s user=%s", chat.id, user.id)
- 
-    # Approve ke baad PEHLE user ko welcome DM (join request ke saath bina /start ke bhi chalta hai)
-    try:
-        await send_join_dm(context, chat, user, dm_chat_id=getattr(request, "user_chat_id", None))
-    except Exception:
-        log.exception("send_join_dm crashed")
  
     try:
         lang = group.get("default_language", "en")
