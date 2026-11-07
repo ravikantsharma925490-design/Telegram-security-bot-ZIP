@@ -145,28 +145,8 @@ def _build_text(users, first: bool) -> str:
  
 # ---------- ek group ka kaam ----------
  
-async def _process_group(bot, chat_id, today, now_min, deadline, summary):
-    group = db.get_group(chat_id)
-    if not group.get("daily_tag", 1):
-        return
- 
-    tag_time = group.get("tag_time") or DEFAULT_TAG_TIME
-    try:
-        start_min = _to_minutes(tag_time)
-    except Exception:
-        start_min = _to_minutes(DEFAULT_TAG_TIME)
- 
-    state = db.get_tag_state(chat_id)
-    same_day = bool(state) and state.get("date") == today
-    if same_day and state.get("status") == "done":
-        return
- 
-    running_today = same_day and state.get("status") == "running"
-    if not running_today:
-        # Naya tag tabhi shuru jab time aa gaya ho (aur bahut der na ho gayi ho)
-        if not (start_min <= now_min < start_min + WINDOW_MINUTES):
-            return
- 
+async def _process_group(bot, chat_id, today, deadline, summary):
+    """Ek group ke 5-5 members tag karta hai (eligibility run_daily_tag pehle hi check kar chuka hota hai)."""
     # Lock (do cron calls ek saath ek hi group par na chalein) + RetryAfter wait
     lock_for = max(deadline - time.time(), 1) + 5
     st = db.claim_tag_state(chat_id, today, lock_for)
@@ -221,6 +201,8 @@ async def _process_group(bot, chat_id, today, now_min, deadline, summary):
     if finished:
         summary["finished_groups"] += 1
         log.info("daily tag done: chat=%s tagged=%s messages=%s", chat_id, tagged, sent_msgs)
+        if tagged == 0:
+            log.warning("daily tag: chat %s mein saved member nahi mila (ya send fail hua) - aaj ke liye done maana gaya", chat_id)
  
  
 # ---------- cron entry point ----------
@@ -233,16 +215,44 @@ async def run_daily_tag(bot):
     today = now.strftime("%Y-%m-%d")
     now_min = now.hour * 60 + now.minute
  
+    # Sirf 2 DB queries: Daily Tag ON wale groups + unki aaj ki state. Baaki groups par kuch nahi chalta.
+    groups = db.list_daily_tag_groups()
+    states = db.get_tag_states([g["chat_id"] for g in groups])
+ 
+    due = []
+    done_today = 0
+    for g in groups:
+        chat_id = g["chat_id"]
+        st = states.get(chat_id)
+        same_day = bool(st) and st.get("date") == today
+        if same_day and st.get("status") == "done":
+            done_today += 1
+            continue
+        if same_day and st.get("status") == "running":
+            due.append(chat_id)  # shuru ho chuka hai, poora hone tak chalao
+            continue
+        try:
+            start_min = _to_minutes(g.get("tag_time") or DEFAULT_TAG_TIME)
+        except Exception:
+            start_min = _to_minutes(DEFAULT_TAG_TIME)
+        if start_min <= now_min < start_min + WINDOW_MINUTES:
+            due.append(chat_id)
+ 
     summary = {"messages": 0, "tagged": 0, "finished_groups": 0}
     sem = asyncio.Semaphore(MAX_PARALLEL_GROUPS)
  
     async def _one(chat_id):
         async with sem:
             try:
-                await _process_group(bot, chat_id, today, now_min, deadline, summary)
+                await _process_group(bot, chat_id, today, deadline, summary)
             except Exception:
                 log.exception("daily tag failed for chat %s", chat_id)
  
-    await asyncio.gather(*[_one(cid) for cid in db.list_group_ids()])
-    return {"ist": now.strftime("%H:%M"), "date": today, **summary, "seconds": round(time.time() - started, 1)}
+    if due:
+        await asyncio.gather(*[_one(cid) for cid in due])
+    return {
+        "ist": now.strftime("%H:%M"), "date": today,
+        "groups_with_tag_on": len(groups), "done_today": done_today, "due_groups": len(due),
+        **summary, "seconds": round(time.time() - started, 1),
+    }
  
