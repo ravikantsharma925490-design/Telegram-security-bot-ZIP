@@ -33,6 +33,8 @@ DEFAULT_GROUP = {
     "log_chat_id": 0,
     "auto_accept_requests": 1,
     "block_bot_add": 0,
+    "daily_tag": 1,
+    "tag_time": "06:00",
     "setup_done": 0,
 }
  
@@ -215,6 +217,63 @@ def claim_broadcast_job(statuses, lock_seconds):
     )
  
  
+# ---------- Daily Tag (roz subah sabko tag) ----------
+ 
+def list_group_users_after(chat_id, last_user_id, limit):
+    """Is group ke saved users, user_id ke order mein, last_user_id ke baad se (agla batch)."""
+    return list(
+        _db.group_users.find({"chat_id": chat_id, "user_id": {"$gt": last_user_id}})
+        .sort("user_id", 1)
+        .limit(limit)
+    )
+ 
+ 
+def get_tag_state(chat_id):
+    return _db.daily_tag_state.find_one({"_id": chat_id})
+ 
+ 
+def claim_tag_state(chat_id, today, lock_seconds):
+    """Group ke aaj ke tag ko atomically 'running' + lock karta hai. None = done / locked / abhi wait karna hai."""
+    now = time.time()
+    # Naya din: state nayi shuru karo (pehle din ki purani state ho to)
+    _db.daily_tag_state.update_one(
+        {"_id": chat_id, "date": {"$ne": today}},
+        {"$set": {"date": today, "status": "running", "last_id": 0, "sent_msgs": 0, "tagged": 0,
+                  "locked_until": 0, "next_try": 0}},
+        upsert=False,
+    )
+    try:
+        _db.daily_tag_state.insert_one(
+            {"_id": chat_id, "date": today, "status": "running", "last_id": 0, "sent_msgs": 0,
+             "tagged": 0, "locked_until": 0, "next_try": 0}
+        )
+    except Exception:
+        pass  # pehle se hai
+    return _db.daily_tag_state.find_one_and_update(
+        {
+            "_id": chat_id,
+            "date": today,
+            "status": "running",
+            "locked_until": {"$lt": now},
+            "next_try": {"$lt": now},
+        },
+        {"$set": {"locked_until": now + lock_seconds}},
+        return_document=ReturnDocument.AFTER,
+    )
+ 
+ 
+def save_tag_progress(chat_id, **fields):
+    _db.daily_tag_state.update_one({"_id": chat_id}, {"$set": fields})
+ 
+ 
+def finish_tag_run(chat_id, today, last_id, sent_msgs, tagged, finished, next_try):
+    fields = {"last_id": last_id, "sent_msgs": sent_msgs, "tagged": tagged,
+              "locked_until": 0, "next_try": next_try}
+    if finished:
+        fields["status"] = "done"
+    _db.daily_tag_state.update_one({"_id": chat_id, "date": today}, {"$set": fields})
+ 
+ 
 # ---------- Bio-link check state ----------
  
 def get_bio_state(chat_id, user_id):
@@ -251,7 +310,7 @@ def update_group(chat_id, **kwargs):
  
 def toggle_group_setting(chat_id, field):
     group = get_group(chat_id)
-    new_val = 0 if group.get(field, 0) else 1
+    new_val = 0 if group.get(field, DEFAULT_GROUP.get(field, 0)) else 1
     update_group(chat_id, **{field: new_val})
     return new_val
  
