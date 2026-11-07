@@ -33,6 +33,7 @@ from handlers.broadcast import broadcast_command, broadcast_callback
 from handlers.bio_link import bio_link_check
 from handlers.media_filter import media_moderation_check
 from handlers.owner import stats_command, groups_command
+from handlers.daily_tag import settagtime_command
  
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -109,6 +110,7 @@ async def _post_init(application):
         BotCommand("setgroup", "Set required group for Force Join (admins)"),
         BotCommand("setlanguage", "Set the group's default language (admins)"),
         BotCommand("setlogchat", "Set the chat for security logs (admins)"),
+        BotCommand("settagtime", "Set the Daily Tag time, e.g. /settagtime 6:30 (admins)"),
         BotCommand("language", "Choose your own personal language"),
         BotCommand("ban", "Ban a user (reply to their message)"),
         BotCommand("unban", "Unban a user (reply to their message)"),
@@ -144,6 +146,7 @@ def build_application():
     app.add_handler(CommandHandler("setchannel", setchannel_command))
     app.add_handler(CommandHandler("setgroup", setgroup_command))
     app.add_handler(CommandHandler("setlogchat", setlogchat_command))
+    app.add_handler(CommandHandler("settagtime", settagtime_command))
  
     # Admin commands
     app.add_handler(CommandHandler("addadmin", add_admin_command))
@@ -201,13 +204,6 @@ def main():
  
 if __name__ == "__main__":
     main()
- 
- 
- 
- 
- 
- 
- 
- 
+  
  
  
