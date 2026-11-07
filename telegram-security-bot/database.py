@@ -228,6 +228,25 @@ def list_group_users_after(chat_id, last_user_id, limit):
     )
  
  
+def list_daily_tag_groups():
+    """Sirf wo real groups jinmein Daily Tag ON hai (field na ho to default ON maana jata hai)."""
+    return list(_db.groups.find(
+        {"chat_id": {"$lt": 0}, "daily_tag": {"$ne": 0}},
+        {"chat_id": 1, "tag_time": 1},
+    ))
+ 
+ 
+def get_tag_states(chat_ids):
+    if not chat_ids:
+        return {}
+    return {d["_id"]: d for d in _db.daily_tag_state.find({"_id": {"$in": chat_ids}})}
+ 
+ 
+def reset_tag_states():
+    """Test ke liye: aaj ki saari Daily Tag state hata deta hai, taaki dobara tag chal sake."""
+    return _db.daily_tag_state.delete_many({}).deleted_count
+ 
+ 
 def get_tag_state(chat_id):
     return _db.daily_tag_state.find_one({"_id": chat_id})
  
