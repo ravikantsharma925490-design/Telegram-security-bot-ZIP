@@ -57,10 +57,13 @@ async def setup(request: Request, key: str = ""):
  
  
 @app.get("/api/daily-tag")
-async def daily_tag_cron(key: str = ""):
+async def daily_tag_cron(key: str = "", reset: int = 0):
     """cron-job.org har minute ye URL bulata hai. Jis group ka tag time aaya ho wahan 5-5 members ka tag bhejta hai."""
     if not WEBHOOK_SECRET or key != WEBHOOK_SECRET:
         raise HTTPException(status_code=403)
     await _ensure_ready()
+    if reset:
+        # Sirf test ke liye: &reset=1 lagane par aaj ki Daily Tag state saaf, taaki dobara chala sako
+        db.reset_tag_states()
     return await run_daily_tag(tg.bot)
  
