@@ -24,6 +24,7 @@ from config import GROUP_WELCOME_IMAGES, GOODBYE_IMAGE, GROUP_ADDED_IMAGE
 from handlers.admin import send_photo_or_text
 from handlers.logger import send_log
 from handlers.user_tracker import save_user
+from handlers.join_dm import send_join_dm
  
 log = logging.getLogger(__name__)
  
@@ -48,6 +49,9 @@ async def auto_accept_join_request(update: Update, context: ContextTypes.DEFAULT
  
     lang = group.get("default_language", "en")
     await send_log(context, chat.id, t(lang, "log_auto_request_approved", name=user.full_name))
+ 
+    # Approve ke baad user ko welcome DM (join request ke saath bina /start ke bhi chalta hai)
+    await send_join_dm(context, chat, user, dm_chat_id=getattr(request, "user_chat_id", None))
  
  
 # ---- Dedupe: service message + chat_member dono aayein to bhi welcome/goodbye ek hi baar ----
@@ -129,6 +133,9 @@ async def _welcome_member(context, chat, member, reply_to=None):
         await send_log(context, chat.id, t(lang, "log_user_joined", name=member.full_name))
     except Exception:
         log.exception("send_log (join) failed in chat %s", chat.id)
+ 
+    # Seedha add / open join: DM tabhi jayega jab user ne bot start kiya ho, warna chup-chaap skip
+    await send_join_dm(context, chat, member)
  
  
 async def _goodbye_member(context, chat, member, left_by_self):
@@ -329,5 +336,6 @@ async def bot_added_to_group(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
     except Exception:
         log.exception("bot_added_to_group failed in chat %s", chat.id)
+ 
  
  
