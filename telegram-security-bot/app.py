@@ -1,31 +1,32 @@
 import os
-
+ 
 from fastapi import FastAPI, Request, Header, HTTPException
 from telegram import Update
-
+ 
 import database as db
 from main import build_application, _post_init
-
+from handlers.daily_tag import run_daily_tag
+ 
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "")
-
+ 
 db.init_db()
 tg = build_application()
 app = FastAPI()
 _ready = False
-
-
+ 
+ 
 async def _ensure_ready():
     global _ready
     if not _ready:
         await tg.initialize()
         _ready = True
-
-
+ 
+ 
 @app.get("/")
 def home():
     return {"status": "ok"}
-
-
+ 
+ 
 @app.post("/api/webhook")
 async def webhook(
     request: Request,
@@ -37,8 +38,8 @@ async def webhook(
     update = Update.de_json(await request.json(), tg.bot)
     await tg.process_update(update)
     return {"ok": True}
-
-
+ 
+ 
 @app.get("/api/setup")
 async def setup(request: Request, key: str = ""):
     if not WEBHOOK_SECRET or key != WEBHOOK_SECRET:
@@ -53,3 +54,13 @@ async def setup(request: Request, key: str = ""):
     )
     await _post_init(tg)
     return {"webhook": url, "commands": "set"}
+ 
+ 
+@app.get("/api/daily-tag")
+async def daily_tag_cron(key: str = ""):
+    """cron-job.org har minute ye URL bulata hai. Jis group ka tag time aaya ho wahan 5-5 members ka tag bhejta hai."""
+    if not WEBHOOK_SECRET or key != WEBHOOK_SECRET:
+        raise HTTPException(status_code=403)
+    await _ensure_ready()
+    return await run_daily_tag(tg.bot)
+ 
