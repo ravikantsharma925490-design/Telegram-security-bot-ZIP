@@ -110,7 +110,7 @@ async def _post_init(application):
         BotCommand("setgroup", "Set required group for Force Join (admins)"),
         BotCommand("setlanguage", "Set the group's default language (admins)"),
         BotCommand("setlogchat", "Set the chat for security logs (admins)"),
-        BotCommand("settagtime", "Set the Daily Tag time, e.g. /settagtime 6:30 (admins)"),
+        BotCommand("settagtime", "Set a Daily Tag time, e.g. /settagtime night 10:30 PM (admins)"),
         BotCommand("language", "Choose your own personal language"),
         BotCommand("ban", "Ban a user (reply to their message)"),
         BotCommand("unban", "Unban a user (reply to their message)"),
@@ -205,5 +205,6 @@ def main():
 if __name__ == "__main__":
     main()
   
+ 
  
  
