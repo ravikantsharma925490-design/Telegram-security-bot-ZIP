@@ -35,6 +35,14 @@ DEFAULT_GROUP = {
     "block_bot_add": 0,
     "daily_tag": 1,
     "tag_time": "06:00",
+    "daily_tag_afternoon": 1,
+    "tag_time_afternoon": "12:00",
+    "daily_tag_evening": 1,
+    "tag_time_evening": "18:00",
+    "daily_tag_night": 1,
+    "tag_time_night": "22:00",
+    "daily_tag_midnight": 1,
+    "tag_time_midnight": "00:00",
     "setup_done": 0,
 }
  
@@ -229,49 +237,51 @@ def list_group_users_after(chat_id, last_user_id, limit):
  
  
 def list_daily_tag_groups():
-    """Sirf wo real groups jinmein Daily Tag ON hai (field na ho to default ON maana jata hai)."""
-    return list(_db.groups.find(
-        {"chat_id": {"$lt": 0}, "daily_tag": {"$ne": 0}},
-        {"chat_id": 1, "tag_time": 1},
-    ))
+    """Saare real groups (Daily Tag ke ON/OFF aur time ke fields ke saath). Slot ON hai ya nahi, ye daily_tag.py dekhta hai
+    (field na ho to default ON maana jata hai)."""
+    proj = {"chat_id": 1}
+    for f in ("daily_tag", "tag_time"):
+        proj[f] = 1
+    for slot in ("afternoon", "evening", "night", "midnight"):
+        proj[f"daily_tag_{slot}"] = 1
+        proj[f"tag_time_{slot}"] = 1
+    return list(_db.groups.find({"chat_id": {"$lt": 0}}, proj))
  
  
-def get_tag_states(chat_ids):
-    if not chat_ids:
+def get_tag_states(state_ids):
+    """state_ids: 'chat_id:slot' strings (aur purani state ke liye sirf chat_id int)."""
+    if not state_ids:
         return {}
-    return {d["_id"]: d for d in _db.daily_tag_state.find({"_id": {"$in": chat_ids}})}
+    return {d["_id"]: d for d in _db.daily_tag_state.find({"_id": {"$in": list(state_ids)}})}
  
  
 def reset_tag_states():
-    """Test ke liye: aaj ki saari Daily Tag state hata deta hai, taaki dobara tag chal sake."""
+    """Test ke liye: saari Daily Tag state hata deta hai, taaki dobara tag chal sake."""
     return _db.daily_tag_state.delete_many({}).deleted_count
  
  
-def get_tag_state(chat_id):
-    return _db.daily_tag_state.find_one({"_id": chat_id})
- 
- 
-def claim_tag_state(chat_id, today, lock_seconds):
-    """Group ke aaj ke tag ko atomically 'running' + lock karta hai. None = done / locked / abhi wait karna hai."""
+def claim_tag_state(state_id, slot_date, lock_seconds):
+    """Ek group ke ek slot ke aaj ke tag ko atomically 'running' + lock karta hai.
+    None = done / locked / abhi wait karna hai."""
     now = time.time()
-    # Naya din: state nayi shuru karo (pehle din ki purani state ho to)
+    # Naya din / naya slot-date: state nayi shuru karo (purani date ki state ho to)
     _db.daily_tag_state.update_one(
-        {"_id": chat_id, "date": {"$ne": today}},
-        {"$set": {"date": today, "status": "running", "last_id": 0, "sent_msgs": 0, "tagged": 0,
+        {"_id": state_id, "date": {"$ne": slot_date}},
+        {"$set": {"date": slot_date, "status": "running", "last_id": 0, "sent_msgs": 0, "tagged": 0,
                   "locked_until": 0, "next_try": 0}},
         upsert=False,
     )
     try:
         _db.daily_tag_state.insert_one(
-            {"_id": chat_id, "date": today, "status": "running", "last_id": 0, "sent_msgs": 0,
+            {"_id": state_id, "date": slot_date, "status": "running", "last_id": 0, "sent_msgs": 0,
              "tagged": 0, "locked_until": 0, "next_try": 0}
         )
     except Exception:
         pass  # pehle se hai
     return _db.daily_tag_state.find_one_and_update(
         {
-            "_id": chat_id,
-            "date": today,
+            "_id": state_id,
+            "date": slot_date,
             "status": "running",
             "locked_until": {"$lt": now},
             "next_try": {"$lt": now},
@@ -281,16 +291,16 @@ def claim_tag_state(chat_id, today, lock_seconds):
     )
  
  
-def save_tag_progress(chat_id, **fields):
-    _db.daily_tag_state.update_one({"_id": chat_id}, {"$set": fields})
+def save_tag_progress(state_id, **fields):
+    _db.daily_tag_state.update_one({"_id": state_id}, {"$set": fields})
  
  
-def finish_tag_run(chat_id, today, last_id, sent_msgs, tagged, finished, next_try):
+def finish_tag_run(state_id, slot_date, last_id, sent_msgs, tagged, finished, next_try):
     fields = {"last_id": last_id, "sent_msgs": sent_msgs, "tagged": tagged,
               "locked_until": 0, "next_try": next_try}
     if finished:
         fields["status"] = "done"
-    _db.daily_tag_state.update_one({"_id": chat_id, "date": today}, {"$set": fields})
+    _db.daily_tag_state.update_one({"_id": state_id, "date": slot_date}, {"$set": fields})
  
  
 # ---------- Bio-link check state ----------
@@ -465,6 +475,7 @@ def get_stats():
         "bans": _get_stat("bans"),
         "warnings": _get_stat("warnings"),
     }
+ 
  
  
  
