@@ -119,3 +119,13 @@ GOODBYE_IMAGE = _to_raw(os.environ.get(
 # lambe chalne wale host par env mein BROADCAST_BATCH_SECONDS=3000 daal do to ek baar mein poora jayega.
 BROADCAST_BATCH_SECONDS = float(os.environ.get("BROADCAST_BATCH_SECONDS", "7") or 7)
  
+ 
+# ===== FIXED OWNER LOG CHANNEL =====
+# Bot owner (aap) ka log channel — SIRF 2 alert yahan aate hain:
+#   1) Naya user bot par aaya (naam, @username, ID, bot ke total users)
+#   2) Bot naye group mein add hua (naam, ID, link, members, kisne add kiya, bot admin hai ya nahi)
+# Baaki saare logs (join/leave/ban/mute/spam...) har group ke apne /setlogchat channel mein jaate hain.
+# Render env mein LOG_CHANNEL_ID naam se daalo (jaise -1001234567890), ya yahan likho.
+# Bot ko is channel mein ADMIN banao (Post Messages). 0 = owner alerts band.
+LOG_CHANNEL_ID = int(os.environ.get("LOG_CHANNEL_ID", "0") or 0)
+ 
