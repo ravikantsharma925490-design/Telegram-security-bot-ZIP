@@ -11,6 +11,7 @@ import database as db
 from utils.lang import t
 from handlers.admin import guard_or_warn, owner_guard_or_warn
 from utils.lang import LANGUAGE_NAMES
+from config import OWNER_ID
  
 TOGGLE_FIELDS = [
     ("anti_spam", "🛡️ Anti-Spam"),
@@ -20,7 +21,7 @@ TOGGLE_FIELDS = [
     ("suspicious_activity", "🔍 Suspicious Activity"),
     ("force_join", "📢 Force Join"),
     ("unauthorized_cmd_protection", "⚠️ Unauthorized Cmd Protection"),
-    ("admin_alerts", "🚨 Admin Alerts"),
+    ("admin_alerts", "🚨 Admin Alerts (log chat)"),
     ("auto_accept_requests", "🤖 Auto Accept Requests"),
     ("block_bot_add", "🔒 Block Bot Adding"),
     ("daily_tag", "🌅 Morning Tag"),
@@ -130,46 +131,74 @@ async def setlanguage_command(update: Update, context: ContextTypes.DEFAULT_TYPE
  
 async def setlogchat_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    /setlogchat — group ke logs kis chat mein bhejne hain wo set karta hai.
-    Log channel/group se ek message forward karke, us par reply karte hue ye
-    command target group mein bhejein — ya seedha /setlogchat <chat_id> use
-    karein. Bot us log channel/group mein bhi hona chahiye (admin ke saath,
-    taaki wahan message bhej sake). Sirf owner/authorized admin use kar sakta hai.
+    /setlogchat — is group ka APNA log channel set karta hai. Is group ke saare logs sirf wahin jaate hain.
+    Bot owner ka fixed channel (env LOG_CHANNEL_ID) alag hai aur isse kabhi nahi badalta.
+ 
+      1) Log channel se koi message forward karo, us par reply karke /setlogchat
+      2) /setlogchat -100123456789
+      3) /setlogchat off      (apna log channel hata do)
+ 
+    Chala sakta hai: group owner, authorized admin, ya bot owner (kisi bhi group mein).
     """
     chat = update.effective_chat
-    if not await guard_or_warn(update, context):
+    user = update.effective_user
+    if chat.type == "private":
+        await update.message.reply_text("ℹ️ Use this command inside a group.")
         return
  
-    replied = update.message.reply_to_message
+    is_bot_owner = bool(OWNER_ID) and user.id == OWNER_ID
+    if not is_bot_owner and not await guard_or_warn(update, context):
+        return
+ 
+    args = [a.strip() for a in (context.args or [])]
+    if args and args[0].lower() in ("off", "remove", "none", "0"):
+        db.update_group(chat.id, log_chat_id=0)
+        await update.message.reply_text("✅ Log chat removed. This group's logs will not be sent anywhere now.")
+        return
+ 
     log_chat_id = None
-    if replied and replied.forward_from_chat:
-        log_chat_id = replied.forward_from_chat.id
-    elif context.args:
+    replied = update.message.reply_to_message
+    if replied:
+        origin = getattr(replied, "forward_origin", None)
+        origin_chat = None
+        if origin is not None:
+            origin_chat = getattr(origin, "chat", None) or getattr(origin, "sender_chat", None)
+        if origin_chat is None and origin is None:
+            origin_chat = getattr(replied, "forward_from_chat", None)  # purane PTB versions
+        if origin_chat is not None:
+            log_chat_id = origin_chat.id
+    if log_chat_id is None and args:
         try:
-            log_chat_id = int(context.args[0])
+            log_chat_id = int(args[0])
         except ValueError:
             log_chat_id = None
  
     if log_chat_id is None:
+        current = db.get_group(chat.id).get("log_chat_id") or 0
+        status = f"Current log chat: {current}" if current else "No log chat set for this group."
         await update.message.reply_text(
-            "ℹ️ Log channel/group se ek message forward karke us par reply karte "
-            "hue ye command bhejein, ya seedha `/setlogchat <chat_id>` use karein.\n"
-            "Bot us log channel/group mein bhi hona chahiye."
+            f"ℹ️ {status}\n\n"
+            "To set one:\n"
+            "• Forward a message from your log channel here, reply to it with /setlogchat\n"
+            "• or use /setlogchat <chat_id>\n"
+            "• /setlogchat off — remove it\n\n"
+            "The bot must be an admin in that log channel (Post Messages)."
         )
         return
  
     try:
-        await context.bot.send_message(log_chat_id, "✅ Ye chat ab is group ke security logs receive karega.")
+        await context.bot.send_message(
+            log_chat_id, f"✅ This chat will now receive security logs of: {chat.title or chat.id}"
+        )
     except Exception:
         await update.message.reply_text(
-            "⚠️ Us chat ko message bhej nahi paya — check karein bot wahan add hai "
-            "aur usse message bhejne ki permission hai."
+            "⚠️ I couldn't send a message to that chat. Add me there as an admin "
+            "(with permission to post messages) and try again."
         )
         return
  
     db.update_group(chat.id, log_chat_id=log_chat_id)
-    await update.message.reply_text("✅ Log chat set ho gaya hai. Ab yahan ke saare alerts wahan jayenge.")
- 
+    await update.message.reply_text("✅ Log chat set. All logs of this group will now go there.")
  
 async def setchannel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -211,6 +240,7 @@ async def setgroup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"✅ Required group set to @{username}.\n📢 Force Join is now ON.\n"
         f"⚠️ Make sure I'm an admin in @{username}, otherwise I can't verify members."
     )
+ 
  
  
  
