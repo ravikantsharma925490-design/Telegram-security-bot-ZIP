@@ -152,8 +152,8 @@ def save_bot_user(user_id, username, name):
     username = (username or "").lstrip("@").lower()
     name = name or ""
     if _bot_user_cache.get(user_id) == (username, name):
-        return
-    _db.bot_users.update_one(
+        return False
+    res = _db.bot_users.update_one(
         {"user_id": user_id},
         {"$set": {"username": username, "name": name}, "$setOnInsert": {"started_at": time.time()}},
         upsert=True,
@@ -161,12 +161,18 @@ def save_bot_user(user_id, username, name):
     if len(_bot_user_cache) > 50000:
         _bot_user_cache.clear()
     _bot_user_cache[user_id] = (username, name)
+    return res.upserted_id is not None  # True = bilkul naya user (pehli baar)
  
  
 def remove_bot_user(user_id):
     """User ne bot block kar diya => list se hata do."""
     _bot_user_cache.pop(user_id, None)
     _db.bot_users.delete_one({"user_id": user_id})
+ 
+ 
+def count_bot_users():
+    """Bot ke total users (jinhone bot ko private mein start/message kiya)."""
+    return _db.bot_users.count_documents({})
  
  
 def list_bot_user_ids():
@@ -475,6 +481,7 @@ def get_stats():
         "bans": _get_stat("bans"),
         "warnings": _get_stat("warnings"),
     }
+ 
  
  
  
