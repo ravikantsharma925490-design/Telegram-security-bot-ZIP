@@ -1,14 +1,18 @@
 """
 Daily Tag — roz fixed time par group ke saare (saved) members ko 5-5 ke message mein tag karta hai.
  
-- Default: ON, subah 6:00 baje (India time, IST). /settagtime se group ka time badal sakte hain.
-- /settings mein "Daily Tag" ON/OFF button (sirf owner / admins).
+5 slots (sab default ON, time India time / IST mein):
+    🌅 Morning   6:00 AM     ☀️ Afternoon 12:00 PM     🌆 Evening 6:00 PM
+    🌙 Night    10:00 PM     🌌 Midnight  12:00 AM
+ 
+- /settings mein har slot ka alag ON/OFF button (sirf owner / admins).
+- Time badalne ke liye:  /settagtime night 11:00 PM   (slot ka naam na likho to Morning ka time badlega)
 - Bot khud time nahi dekhta — bahar se cron (cron-job.org) har minute ye URL bulata hai:
       https://<tumhara-vercel-domain>/api/daily-tag?key=<WEBHOOK_SECRET>
 - Bot apni taraf se koi delay nahi rakhta, jitni tezi se ho sake messages bhejta hai.
   Telegram "ruko" (429) bole to utna ruk kar (ya agli cron call mein) wahin se aage chalta hai.
-- Progress (kitne members tag ho chuke) MongoDB mein save hota hai, to Vercel beech mein ruk jaye
-  tab bhi agli call wahin se chalegi, kisi ko do baar tag nahi hoga.
+- Progress (kitne members tag ho chuke) har (group, slot) ke liye MongoDB mein save hota hai, to Vercel beech mein
+  ruk jaye tab bhi agli call wahin se chalegi, kisi ko do baar tag nahi hoga.
 """
  
 import asyncio
@@ -30,10 +34,52 @@ from handlers.admin import guard_or_warn
 log = logging.getLogger(__name__)
  
 IST = timezone(timedelta(hours=5, minutes=30))
-DEFAULT_TAG_TIME = "06:00"
+DEFAULT_TAG_TIME = "06:00"  # Morning ka default (settings.py isko import karta hai)
 PER_MESSAGE = 5            # ek message mein itne members
-WINDOW_MINUTES = 180       # tag time ke itne minute baad tak naya tag shuru ho sakta hai (late ON karne par achanak raat ko tag na ho)
-MAX_PARALLEL_GROUPS = 8    # ek saath itne groups
+WINDOW_MINUTES = 180       # slot time ke itne minute baad tak naya tag shuru ho sakta hai (late ON karne par achanak tag na ho)
+MAX_PARALLEL_GROUPS = 8    # ek saath itne (group, slot) kaam
+ 
+# ---------- slots ----------
+# on  = DB mein ON/OFF ka field (Morning ke purane field naam wahi rakhe hain, to purani setting bani rahegi)
+# time = DB mein time ka field
+DESIGN_LINE = "꧁𓊈𒆜🦚ཞ།ધે ཞ།ધે🦚𒆜𓊉꧂"
+SLOTS = {
+    "morning": {
+        "label": "🌅 Morning", "on": "daily_tag", "time": "tag_time", "default": "06:00",
+        "title": "♡᭄ꦿGOOD MORNING ♡", "line": "ONLINE AAO, KAHAN HO SAB LOG?",
+    },
+    "afternoon": {
+        "label": "☀️ Afternoon", "on": "daily_tag_afternoon", "time": "tag_time_afternoon", "default": "12:00",
+        "title": "GOOD AFTERNOON ☀️", "line": "ONLINE AAO, KAHAN HO SAB LOG?",
+    },
+    "evening": {
+        "label": "🌆 Evening", "on": "daily_tag_evening", "time": "tag_time_evening", "default": "18:00",
+        "title": "GOOD EVENING 🌆", "line": "ONLINE AAO, KAHAN HO SAB LOG?",
+    },
+    "night": {
+        "label": "🌙 Night", "on": "daily_tag_night", "time": "tag_time_night", "default": "22:00",
+        "title": "GOOD NIGHT 🌙", "line": "SO JAO SAB LOG, KAL MILTE HAIN!",
+    },
+    "midnight": {
+        "label": "🌌 Midnight", "on": "daily_tag_midnight", "time": "tag_time_midnight", "default": "00:00",
+        "title": "MIDNIGHT 🌌", "line": "ABHI TAK JAAG RAHE HO? ONLINE AAO!",
+    },
+}
+SLOT_ORDER = ["morning", "afternoon", "evening", "night", "midnight"]
+SLOT_ALIASES = {"mid": "midnight"}
+ 
+ 
+def slot_header(slot: str) -> str:
+    s = SLOTS[slot]
+    return f"{DESIGN_LINE}\n\n{s['title']}\n\n{s['line']}"
+ 
+ 
+def slot_is_on(group: dict, slot: str) -> bool:
+    return bool(group.get(SLOTS[slot]["on"], 1))  # field na ho to default ON
+ 
+ 
+def slot_time(group: dict, slot: str) -> str:
+    return group.get(SLOTS[slot]["time"]) or SLOTS[slot]["default"]
  
  
 # ---------- time helpers ----------
@@ -81,8 +127,26 @@ def parse_time(text: str):
  
 # ---------- /settagtime ----------
  
+_USAGE = (
+    "`/settagtime morning 6:30 AM`\n"
+    "`/settagtime afternoon 12:30 PM`\n"
+    "`/settagtime evening 6 PM`\n"
+    "`/settagtime night 10:30 PM`\n"
+    "`/settagtime midnight 12:00 AM`\n"
+    "(Slot ka naam na likho to Morning ka time badlega, jaise `/settagtime 6:30`)"
+)
+ 
+ 
+def _slots_overview(group: dict) -> str:
+    lines = []
+    for slot in SLOT_ORDER:
+        state = "ON ✅" if slot_is_on(group, slot) else "OFF ❌"
+        lines.append(f"{SLOTS[slot]['label']}: {format_12h(slot_time(group, slot))} (IST) — {state}")
+    return "\n".join(lines)
+ 
+ 
 async def settagtime_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """/settagtime <time> — Daily Tag ka time (IST). Sirf owner / admins."""
+    """/settagtime [slot] <time> — Daily Tag slot ka time (IST). Sirf owner / admins."""
     chat = update.effective_chat
     if chat.type not in ("group", "supergroup"):
         await update.message.reply_text("ℹ️ Ye command group mein use karo.")
@@ -91,32 +155,38 @@ async def settagtime_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
  
     group = db.get_group(chat.id)
-    current = group.get("tag_time") or DEFAULT_TAG_TIME
  
     if not context.args:
-        state = "ON ✅" if group.get("daily_tag", 1) else "OFF ❌ (/settings se ON karo)"
         await update.message.reply_text(
-            f"🌅 Daily Tag: {state}\n"
-            f"⏰ Abhi ka time: {format_12h(current)} (IST)\n\n"
-            "Time badalne ke liye:\n"
-            "`/settagtime 6:30`  ya  `/settagtime 6:30 PM`  ya  `/settagtime 18:30`",
+            "🌅 Daily Tag ke slots:\n" + _slots_overview(group) +
+            "\n\nON/OFF karne ke liye /settings kholo. Time badalne ke liye:\n" + _USAGE,
             parse_mode=ParseMode.MARKDOWN,
         )
         return
  
-    new_time = parse_time(" ".join(context.args))
+    args = list(context.args)
+    first = args[0].lower()
+    first = SLOT_ALIASES.get(first, first)
+    if first in SLOTS:
+        slot = first
+        time_text = " ".join(args[1:])
+    else:
+        slot = "morning"
+        time_text = " ".join(args)
+ 
+    new_time = parse_time(time_text)
     if not new_time:
         await update.message.reply_text(
-            "❌ Time samajh nahi aaya. Aise likho:\n"
-            "`/settagtime 6:30`  ya  `/settagtime 6:30 PM`  ya  `/settagtime 18:30`",
+            "❌ Time samajh nahi aaya. Aise likho:\n" + _USAGE,
             parse_mode=ParseMode.MARKDOWN,
         )
         return
  
-    db.update_group(chat.id, tag_time=new_time)
-    extra = "" if group.get("daily_tag", 1) else "\n⚠️ Daily Tag abhi OFF hai, /settings se ON karo."
+    db.update_group(chat.id, **{SLOTS[slot]["time"]: new_time})
+    extra = "" if slot_is_on(group, slot) else f"\n⚠️ {SLOTS[slot]['label']} abhi OFF hai, /settings se ON karo."
     await update.message.reply_text(
-        f"✅ Daily Tag ka time set: {format_12h(new_time)} (IST). Ab roz isi time par sabko tag hoga.{extra}"
+        f"✅ {SLOTS[slot]['label']} Tag ka time set: {format_12h(new_time)} (IST). "
+        f"Ab roz isi time par sabko tag hoga.{extra}"
     )
  
  
@@ -128,27 +198,21 @@ def _mention(user_doc) -> str:
     return f'<a href="tg://user?id={user_doc["user_id"]}">{name}</a>'
  
  
-# Har tag message ke upar aane wala text. Yahin se badal sakte ho.
-TAG_HEADER = (
-    "꧁𓊈𒆜🦚ཞ།ધે ཞ།ધે🦚𒆜𓊉꧂\n\n"
-    "♡᭄ꦿGOOD MORNING ♡\n\n"
-    "ONLINE AAO, KAHAN HO SAB LOG?"
-)
- 
- 
-def _build_text(users, first: bool = True) -> str:
-    """Har 5-member message ke upar wahi Good Morning text + neeche 5 naam."""
+def _build_text(users, slot: str) -> str:
+    """Har 5-member message ke upar slot ka design + text, neeche 5 naam."""
     body = " ".join(_mention(u) for u in users)
-    return f"{html.escape(TAG_HEADER)}\n\n{body}"
+    return f"{html.escape(slot_header(slot))}\n\n{body}"
  
  
-# ---------- ek group ka kaam ----------
+# ---------- ek group ke ek slot ka kaam ----------
  
-async def _process_group(bot, chat_id, today, deadline, summary):
-    """Ek group ke 5-5 members tag karta hai (eligibility run_daily_tag pehle hi check kar chuka hota hai)."""
-    # Lock (do cron calls ek saath ek hi group par na chalein) + RetryAfter wait
+async def _process_slot(bot, chat_id, slot, slot_date, deadline, summary):
+    """Ek group ke ek slot ke 5-5 members tag karta hai (eligibility run_daily_tag pehle hi check kar chuka hota hai)."""
+    state_id = f"{chat_id}:{slot}"
+ 
+    # Lock (do cron calls ek saath ek hi slot par na chalein) + RetryAfter wait
     lock_for = max(deadline - time.time(), 1) + 5
-    st = db.claim_tag_state(chat_id, today, lock_for)
+    st = db.claim_tag_state(state_id, slot_date, lock_for)
     if st is None:
         return
  
@@ -166,7 +230,7 @@ async def _process_group(bot, chat_id, today, deadline, summary):
         try:
             await bot.send_message(
                 chat_id,
-                _build_text(users, first=(sent_msgs == 0)),
+                _build_text(users, slot),
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True,
             )
@@ -180,11 +244,11 @@ async def _process_group(bot, chat_id, today, deadline, summary):
             break
         except (Forbidden, BadRequest) as e:
             # Bot group se hata diya gaya / message bhejne ki permission nahi
-            log.warning("daily tag: chat %s par send nahi ho paya (%s) - aaj ke liye band", chat_id, e)
+            log.warning("daily tag: chat %s (%s) par send nahi ho paya (%s) - is slot ke liye band", chat_id, slot, e)
             finished = True
             break
         except TelegramError as e:
-            log.warning("daily tag: chat %s TelegramError %s", chat_id, e)
+            log.warning("daily tag: chat %s (%s) TelegramError %s", chat_id, slot, e)
             next_try = time.time() + 20
             break
  
@@ -192,16 +256,16 @@ async def _process_group(bot, chat_id, today, deadline, summary):
         sent_msgs += 1
         tagged += len(users)
         # Har message ke baad progress save: crash / timeout par bhi dobara tag nahi hoga
-        db.save_tag_progress(chat_id, last_id=last_id, sent_msgs=sent_msgs, tagged=tagged)
+        db.save_tag_progress(state_id, last_id=last_id, sent_msgs=sent_msgs, tagged=tagged)
  
-    db.finish_tag_run(chat_id, today, last_id, sent_msgs, tagged, finished, next_try)
+    db.finish_tag_run(state_id, slot_date, last_id, sent_msgs, tagged, finished, next_try)
     summary["messages"] += sent_msgs - st.get("sent_msgs", 0)
     summary["tagged"] += tagged - st.get("tagged", 0)
     if finished:
-        summary["finished_groups"] += 1
-        log.info("daily tag done: chat=%s tagged=%s messages=%s", chat_id, tagged, sent_msgs)
+        summary["finished"] += 1
+        log.info("daily tag done: chat=%s slot=%s tagged=%s messages=%s", chat_id, slot, tagged, sent_msgs)
         if tagged == 0:
-            log.warning("daily tag: chat %s mein saved member nahi mila (ya send fail hua) - aaj ke liye done maana gaya", chat_id)
+            log.warning("daily tag: chat %s (%s) mein saved member nahi mila (ya send fail hua) - done maana gaya", chat_id, slot)
  
  
 # ---------- cron entry point ----------
@@ -212,47 +276,67 @@ async def run_daily_tag(bot):
     deadline = started + BROADCAST_BATCH_SECONDS
     now = _now_ist()
     today = now.strftime("%Y-%m-%d")
+    yesterday = (now - timedelta(days=1)).strftime("%Y-%m-%d")
     now_min = now.hour * 60 + now.minute
  
-    # Sirf 2 DB queries: Daily Tag ON wale groups + unki aaj ki state. Baaki groups par kuch nahi chalta.
+    # Sirf 2 DB queries: saare groups + unki states. Jis slot ka time nahi aaya uspar kuch nahi chalta.
     groups = db.list_daily_tag_groups()
-    states = db.get_tag_states([g["chat_id"] for g in groups])
+    ids = []
+    for g in groups:
+        for slot in SLOT_ORDER:
+            ids.append(f"{g['chat_id']}:{slot}")
+        ids.append(g["chat_id"])  # purani (sirf Morning wali) state, double tag se bachne ke liye
+    states = db.get_tag_states(ids)
  
     due = []
-    done_today = 0
+    done = 0
+    slots_on = 0
     for g in groups:
         chat_id = g["chat_id"]
-        st = states.get(chat_id)
-        same_day = bool(st) and st.get("date") == today
-        if same_day and st.get("status") == "done":
-            done_today += 1
-            continue
-        if same_day and st.get("status") == "running":
-            due.append(chat_id)  # shuru ho chuka hai, poora hone tak chalao
-            continue
-        try:
-            start_min = _to_minutes(g.get("tag_time") or DEFAULT_TAG_TIME)
-        except Exception:
-            start_min = _to_minutes(DEFAULT_TAG_TIME)
-        if start_min <= now_min < start_min + WINDOW_MINUTES:
-            due.append(chat_id)
+        for slot in SLOT_ORDER:
+            if not slot_is_on(g, slot):
+                continue
+            slots_on += 1
+            try:
+                start_min = _to_minutes(slot_time(g, slot))
+            except Exception:
+                start_min = _to_minutes(SLOTS[slot]["default"])
  
-    summary = {"messages": 0, "tagged": 0, "finished_groups": 0}
+            # Slot ki "date": raat ke slot ka tag aadhi raat ke baad bhi usi slot ka maana jata hai
+            slot_date = today if now_min >= start_min else yesterday
+            elapsed = (now_min - start_min) % 1440
+ 
+            st = states.get(f"{chat_id}:{slot}")
+            same_day = bool(st) and st.get("date") == slot_date
+            if not st and slot == "morning":
+                legacy = states.get(chat_id)
+                if legacy and legacy.get("date") == slot_date:
+                    done += 1
+                    continue
+            if same_day and st.get("status") == "done":
+                done += 1
+                continue
+            if same_day and st.get("status") == "running":
+                due.append((chat_id, slot, slot_date))  # shuru ho chuka hai, poora hone tak chalao
+                continue
+            if elapsed < WINDOW_MINUTES:
+                due.append((chat_id, slot, slot_date))
+ 
+    summary = {"messages": 0, "tagged": 0, "finished": 0}
     sem = asyncio.Semaphore(MAX_PARALLEL_GROUPS)
  
-    async def _one(chat_id):
+    async def _one(chat_id, slot, slot_date):
         async with sem:
             try:
-                await _process_group(bot, chat_id, today, deadline, summary)
+                await _process_slot(bot, chat_id, slot, slot_date, deadline, summary)
             except Exception:
-                log.exception("daily tag failed for chat %s", chat_id)
+                log.exception("daily tag failed for chat %s (%s)", chat_id, slot)
  
     if due:
-        await asyncio.gather(*[_one(cid) for cid in due])
+        await asyncio.gather(*[_one(c, s, d) for c, s, d in due])
     return {
         "ist": now.strftime("%H:%M"), "date": today,
-        "groups_with_tag_on": len(groups), "done_today": done_today, "due_groups": len(due),
+        "groups": len(groups), "slots_on": slots_on, "done_today": done, "due": len(due),
         **summary, "seconds": round(time.time() - started, 1),
     }
- 
  
