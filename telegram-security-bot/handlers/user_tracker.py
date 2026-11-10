@@ -12,6 +12,7 @@ User group chhode ya ban ho to data hata diya jata hai (handlers/welcome.py).
 import logging
  
 import database as db
+from handlers.logger import send_owner_log, fmt_user
  
 log = logging.getLogger(__name__)
  
@@ -106,7 +107,21 @@ async def track_private_user(update, context):
     if not user or user.is_bot or not chat or chat.type != "private":
         return
     try:
-        db.save_bot_user(user.id, user.username, user.full_name)
+        is_new = db.save_bot_user(user.id, user.username, user.full_name)
     except Exception:
         log.exception("track_private_user failed")
+        return
+    if is_new:  # sirf pehli baar
+        try:
+            try:
+                total = f"{db.count_bot_users():,}"
+            except Exception:
+                total = "unknown"
+            await send_owner_log(
+                context,
+                f"🆕 New user started the bot\n👤 {fmt_user(user)}\n👥 Total bot users: {total}",
+            )
+        except Exception:
+            log.exception("owner log (new user) failed")
+ 
  
