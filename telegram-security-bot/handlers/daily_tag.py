@@ -128,7 +128,7 @@ def _mention(user_doc) -> str:
     return f'<a href="tg://user?id={user_doc["user_id"]}">{name}</a>'
  
  
-# Pehle message ke upar aane wala text (baaki messages mein sirf 5 naam). Yahin se badal sakte ho.
+# Har tag message ke upar aane wala text. Yahin se badal sakte ho.
 TAG_HEADER = (
     "꧁𓊈𒆜🦚ཞ།ધે ཞ།ધે🦚𒆜𓊉꧂\n\n"
     "♡᭄ꦿGOOD MORNING ♡\n\n"
@@ -136,11 +136,10 @@ TAG_HEADER = (
 )
  
  
-def _build_text(users, first: bool) -> str:
+def _build_text(users, first: bool = True) -> str:
+    """Har 5-member message ke upar wahi Good Morning text + neeche 5 naam."""
     body = " ".join(_mention(u) for u in users)
-    if first:
-        return f"{html.escape(TAG_HEADER)}\n\n{body}"
-    return body
+    return f"{html.escape(TAG_HEADER)}\n\n{body}"
  
  
 # ---------- ek group ka kaam ----------
@@ -255,4 +254,5 @@ async def run_daily_tag(bot):
         "groups_with_tag_on": len(groups), "done_today": done_today, "due_groups": len(due),
         **summary, "seconds": round(time.time() - started, 1),
     }
+ 
  
