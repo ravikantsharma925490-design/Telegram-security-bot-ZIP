@@ -23,17 +23,25 @@ TOGGLE_FIELDS = [
     ("admin_alerts", "🚨 Admin Alerts"),
     ("auto_accept_requests", "🤖 Auto Accept Requests"),
     ("block_bot_add", "🔒 Block Bot Adding"),
-    ("daily_tag", "🌅 Daily Tag"),
+    ("daily_tag", "🌅 Morning Tag"),
+    ("daily_tag_afternoon", "☀️ Afternoon Tag"),
+    ("daily_tag_evening", "🌆 Evening Tag"),
+    ("daily_tag_night", "🌙 Night Tag"),
+    ("daily_tag_midnight", "🌌 Midnight Tag"),
 ]
  
  
 def _settings_keyboard(group):
+    from handlers.daily_tag import SLOTS, format_12h
+    # ON/OFF field -> slot (Daily Tag ke 5 buttons ke naam ke aage unka time dikhane ke liye)
+    slot_by_field = {s["on"]: key for key, s in SLOTS.items()}
+ 
     buttons = []
     for field, label in TOGGLE_FIELDS:
         state = "✅" if group.get(field, db.DEFAULT_GROUP.get(field, 0)) else "❌"
-        if field == "daily_tag":
-            from handlers.daily_tag import format_12h, DEFAULT_TAG_TIME
-            label = f"{label} ({format_12h(group.get('tag_time') or DEFAULT_TAG_TIME)})"
+        if field in slot_by_field:
+            slot = SLOTS[slot_by_field[field]]
+            label = f"{label} ({format_12h(group.get(slot['time']) or slot['default'])})"
         buttons.append([InlineKeyboardButton(f"{state} {label}", callback_data=f"toggle_{field}")])
     buttons.append([InlineKeyboardButton("🗑 Close", callback_data="close_settings")])
     return InlineKeyboardMarkup(buttons)
@@ -203,5 +211,6 @@ async def setgroup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"✅ Required group set to @{username}.\n📢 Force Join is now ON.\n"
         f"⚠️ Make sure I'm an admin in @{username}, otherwise I can't verify members."
     )
+ 
  
  
