@@ -116,13 +116,13 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         lang = db.get_user_language(user.id)
     else:
         lang = db.get_group(chat.id)["default_language"]
-    text = t(lang, "help")
+    text = t("en", "help")  # /help abhi sirf English mein (translation baad mein)
     # Owner / admins ko extra section (admin commands) bhi dikhao; normal member ko sirf common help
     if chat.type != "private":
         try:
             from handlers.admin import is_authorized_admin
             if await is_authorized_admin(chat.id, user.id, context=context):
-                text += t(lang, "help_admin")
+                text += t("en", "help_admin")
         except Exception:
             pass
     await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
