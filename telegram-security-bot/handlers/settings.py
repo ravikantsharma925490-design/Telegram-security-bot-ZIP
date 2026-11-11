@@ -102,6 +102,43 @@ async def settings_close_callback(update: Update, context: ContextTypes.DEFAULT_
         pass
  
  
+def _group_language_keyboard(current):
+    """Group ki language chunne ke buttons (2 per row). Abhi chuni hui language par ✅."""
+    buttons, row = [], []
+    for code, label in LANGUAGE_NAMES.items():
+        text = f"✅ {label}" if code == current else label
+        row.append(InlineKeyboardButton(text, callback_data=f"grplang_{code}"))
+        if len(row) == 2:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+    return InlineKeyboardMarkup(buttons)
+ 
+ 
+async def setlanguage_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/setlanguage ke buttons: sirf owner/admin group ki language badal sakta hai."""
+    query = update.callback_query
+    chat = update.effective_chat
+    user = update.effective_user
+ 
+    from handlers.admin import is_authorized_admin
+    if not await is_authorized_admin(chat.id, user.id, context=context):
+        await query.answer("🚫 Only the group owner or admins can change the language.", show_alert=True)
+        return
+ 
+    code = query.data.replace("grplang_", "")
+    if code not in LANGUAGE_NAMES:
+        await query.answer()
+        return
+    db.update_group(chat.id, default_language=code)
+    await query.answer(t(code, "language_set"))
+    try:
+        await query.edit_message_text(t(code, "language_set"), reply_markup=_group_language_keyboard(code))
+    except Exception:
+        pass
+ 
+ 
 async def setlanguage_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     /setlanguage <code> — group ki DEFAULT language set karta hai (sirf owner/admin).
@@ -113,10 +150,10 @@ async def setlanguage_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
  
     if not context.args:
-        available = ", ".join(f"`{code}`" for code in LANGUAGE_NAMES)
+        current = db.get_group(chat.id).get("default_language", "en")
         await update.message.reply_text(
-            f"🌐 Use: `/setlanguage <code>`\nAvailable codes: {available}",
-            parse_mode="Markdown",
+            t(current, "choose_language"),
+            reply_markup=_group_language_keyboard(current),
         )
         return
  
@@ -240,6 +277,7 @@ async def setgroup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"✅ Required group set to @{username}.\n📢 Force Join is now ON.\n"
         f"⚠️ Make sure I'm an admin in @{username}, otherwise I can't verify members."
     )
+ 
  
  
  
