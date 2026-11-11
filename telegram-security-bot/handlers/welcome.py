@@ -25,6 +25,7 @@ from handlers.admin import send_photo_or_text
 from handlers.logger import send_log
 from handlers.user_tracker import save_user
 from handlers.join_dm import send_join_dm
+from handlers.welcome_card import send_welcome_card
  
 log = logging.getLogger(__name__)
  
@@ -139,7 +140,14 @@ async def _welcome_member(context, chat, member, reply_to=None):
     # Clickable naam: tg://user?id= link (username na ho tab bhi chalta hai). HTML escape zaroori hai.
     mention = f'<a href="tg://user?id={member.id}">{html.escape(member.full_name)}</a>'
     text = t(lang, "welcome", name=mention)
-    await _send_photo_message(context, chat.id, text, reply_to=reply_to, parse_mode="HTML")
+    # Pehle DP wala automatic welcome card; DP na ho ya koi error aaye to purani 5 photos wala welcome
+    sent = False
+    try:
+        sent = await send_welcome_card(context, chat, member, text, reply_to=reply_to, parse_mode="HTML")
+    except Exception:
+        log.exception("send_welcome_card crashed in chat %s", chat.id)
+    if not sent:
+        await _send_photo_message(context, chat.id, text, reply_to=reply_to, parse_mode="HTML")
     try:
         await send_log(context, chat.id, t(lang, "log_user_joined", name=member.full_name))
     except Exception:
@@ -347,6 +355,7 @@ async def bot_added_to_group(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
     except Exception:
         log.exception("bot_added_to_group failed in chat %s", chat.id)
+ 
  
  
  
