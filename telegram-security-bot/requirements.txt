@@ -1,4 +1,5 @@
 python-telegram-bot==21.6
 pymongo==4.9.2
 fastapi
+Pillow>=10.1.0
  
