@@ -22,7 +22,7 @@ import database as db
 from config import BOT_TOKEN
  
 from handlers.setup import start_command, help_command, rules_command, get_file_id_command
-from handlers.settings import settings_command, settings_toggle_callback, settings_close_callback, setlanguage_command, setchannel_command, setgroup_command, setlogchat_command
+from handlers.settings import settings_command, settings_toggle_callback, settings_close_callback, setlanguage_command, setlanguage_callback, setchannel_command, setgroup_command, setlogchat_command
 from handlers.admin import add_admin_command, remove_admin_command, ban_command, unban_command, mute_command, unmute_command, warn_command, delete_command
 from handlers.welcome import auto_accept_join_request, welcome_new_member, member_left, chat_member_update, bot_added_to_group, language_callback, language_command
 from handlers.force_join import force_join_check, verify_callback
@@ -111,7 +111,6 @@ async def _post_init(application):
         BotCommand("setlanguage", "Set the group's default language (admins)"),
         BotCommand("setlogchat", "Set the chat for security logs (admins)"),
         BotCommand("settagtime", "Set a Daily Tag time, e.g. /settagtime night 10:30 PM (admins)"),
-        BotCommand("language", "Choose your own personal language"),
         BotCommand("ban", "Ban a user (reply to their message)"),
         BotCommand("unban", "Unban a user (reply to their message)"),
         BotCommand("mute", "Mute a user (reply to their message)"),
@@ -190,6 +189,7 @@ def build_application():
     app.add_handler(CallbackQueryHandler(settings_toggle_callback, pattern="^toggle_"))
     app.add_handler(CallbackQueryHandler(settings_close_callback, pattern="^close_settings$"))
     app.add_handler(CallbackQueryHandler(language_callback, pattern="^setlang_"))
+    app.add_handler(CallbackQueryHandler(setlanguage_callback, pattern="^grplang_"))
     app.add_handler(CallbackQueryHandler(verify_callback, pattern="^force_join_verify$"))
     return app
  
@@ -205,6 +205,7 @@ def main():
 if __name__ == "__main__":
     main()
   
+ 
  
  
  
