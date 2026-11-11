@@ -116,7 +116,16 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         lang = db.get_user_language(user.id)
     else:
         lang = db.get_group(chat.id)["default_language"]
-    await update.message.reply_text(t(lang, "help"), parse_mode=ParseMode.MARKDOWN)
+    text = t(lang, "help")
+    # Owner / admins ko extra section (admin commands) bhi dikhao; normal member ko sirf common help
+    if chat.type != "private":
+        try:
+            from handlers.admin import is_authorized_admin
+            if await is_authorized_admin(chat.id, user.id, context=context):
+                text += t(lang, "help_admin")
+        except Exception:
+            pass
+    await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
  
  
 async def rules_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -157,6 +166,7 @@ async def get_file_id_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
  
     await message.reply_text(f"📎 File ID:\n`{file_id}`", parse_mode=ParseMode.MARKDOWN)
+ 
  
  
  
