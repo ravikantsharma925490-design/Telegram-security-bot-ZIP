@@ -3,9 +3,11 @@ Admin handler — owner protection, admin permission management, block/unblock u
 aur unauthorized ban/kick/mute/command attempts se protection.
 """
  
+import html
 import time
  
 from telegram import Update, ChatPermissions
+from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
  
 import database as db
@@ -386,10 +388,41 @@ async def warn_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     target = update.message.reply_to_message.from_user
     reason = " ".join(context.args) if context.args else "manual warning"
-    await _issue_warning(update, context, target, reason)
+    await _issue_warning(update, context, target, reason, warned_by=update.effective_user)
  
  
-async def _issue_warning(update: Update, context: ContextTypes.DEFAULT_TYPE, target, reason):
+def _user_link(user_id, name):
+    """Clickable naam (tap karne par profile khulti hai)."""
+    return f'<a href="tg://user?id={user_id}">{html.escape(name or "User")}</a>'
+ 
+ 
+def _warned_by_html(context, warned_by):
+    """
+    'Warned by' ka naam. Jisne warning di uska naam (admin/owner ya doosra user).
+    Auto warning (bad word, link) mein warned_by None hota hai -> is bot ka naam.
+    """
+    if warned_by is not None and getattr(warned_by, "id", None):
+        return _user_link(warned_by.id, warned_by.full_name)
+    name = html.escape(getattr(context.bot, "first_name", None) or "Security Bot")
+    username = getattr(context.bot, "username", None)
+    if username:
+        return f'<a href="https://t.me/{html.escape(username)}">{name}</a>'
+    return name
+ 
+ 
+def _warning_text(context, target, warned_by, reason, count, limit):
+    """Warning ka stylish text (HTML). Reason me jo asli reason hai wahi aata hai."""
+    return (
+        "⚠️ <b>Member Warned</b>\n\n"
+        f"👤 <b>Name:</b> {_user_link(target.id, target.full_name)}\n"
+        f"🛡 <b>Warned by:</b> {_warned_by_html(context, warned_by)}\n"
+        f"📝 <b>Reason:</b> {html.escape(str(reason))}\n"
+        f"🌐 <b>Strikes:</b> <code>[{count}/{limit}]</code>\n\n"
+        f"<blockquote>Reaching {limit} warnings will get you restricted.</blockquote>"
+    )
+ 
+ 
+async def _issue_warning(update: Update, context: ContextTypes.DEFAULT_TYPE, target, reason, warned_by=None):
     """
     Central warning function — moderation.py bhi ise use karta hai.
     NOTE: update.message.reply_text() use nahi karte, kyunki bad-word/spam
@@ -405,10 +438,19 @@ async def _issue_warning(update: Update, context: ContextTypes.DEFAULT_TYPE, tar
     db.incr_stat("warnings")
     limit = DEFAULT_WARNING_LIMIT  # config.py se (DB ki purani value ignore)
  
-    await send_photo_or_text(
-        context, chat.id, WARNING_IMAGE,
-        t(lang, "warning_issued", name=target.full_name, count=count, limit=limit, reason=reason),
-    )
+    try:
+        await send_photo_or_text(
+            context, chat.id, WARNING_IMAGE,
+            _warning_text(context, target, warned_by, reason, count, limit),
+            parse_mode=ParseMode.HTML,
+        )
+    except Exception:
+        # HTML me koi dikkat aayi to purana simple text bhej do, warning kabhi miss nahi hogi
+        logger.exception("stylish warning text failed, falling back to plain text")
+        await send_photo_or_text(
+            context, chat.id, WARNING_IMAGE,
+            t(lang, "warning_issued", name=target.full_name, count=count, limit=limit, reason=reason),
+        )
     await send_log(context, chat.id, t(lang, "log_warning", name=target.full_name, count=count, limit=limit, reason=reason))
  
     if count >= limit:
@@ -441,6 +483,7 @@ async def _issue_warning(update: Update, context: ContextTypes.DEFAULT_TYPE, tar
         db.reset_warnings(chat.id, target.id)
         await context.bot.send_message(chat.id, msg)
         await send_log(context, chat.id, t(lang, "log_mute", name=target.full_name))
+ 
  
  
  
