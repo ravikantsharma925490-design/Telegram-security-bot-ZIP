@@ -28,6 +28,7 @@ from handlers.welcome import auto_accept_join_request, welcome_new_member, membe
 from handlers.force_join import force_join_check, verify_callback
 from handlers.moderation import moderation_check
 from handlers.anti_forward import anti_forward_check
+from handlers.bot_link_cleaner import bot_link_cleaner_check
 from handlers.user_tracker import track_users, track_private_user
 from handlers.broadcast import broadcast_command, broadcast_callback
 from handlers.bio_link import bio_link_check
@@ -43,9 +44,16 @@ logger = logging.getLogger(__name__)
  
  
 async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Har normal group message yaha se guzarta hai: anti-forward -> bio-link notice -> force join -> moderation -> media check."""
+    """Har normal group message yaha se guzarta hai: bot-link cleaner -> anti-forward -> bio-link notice -> force join -> moderation -> media check."""
     if not update.effective_message or update.effective_chat.type not in ("group", "supergroup"):
         return
+ 
+    # Sabse pehle: doosre bot ka link wala message (jaise /broadcast promotion) ho to chup-chaap delete
+    try:
+        if not await bot_link_cleaner_check(update, context):
+            return
+    except Exception:
+        logger.exception("bot_link_cleaner failed")
  
     # User ko database mein save karo (sender + mentions). Sirf save, kabhi message nahi rokta.
     try:
@@ -205,6 +213,7 @@ def main():
 if __name__ == "__main__":
     main()
   
+ 
  
  
  
