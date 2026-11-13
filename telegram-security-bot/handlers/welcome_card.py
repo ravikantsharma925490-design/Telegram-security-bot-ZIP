@@ -7,7 +7,8 @@ automatic photo banata hai (agar photo mein neeche patti ho to usme group ka naa
 - Photo kisi bhi size ki ho sakti hai (square ya 16:9). Circle photo mein KAHIN BHI ho (left, beech, right),
   bot khud sabse bada khaali safed gol hissa dhoondh leta hai. Circle bilkul safed (khaali) hona chahiye.
 - Neeche safed khaali patti ho to usme group ka naam likhta hai. Patti NAHI ho to naam nahi likhta.
-- Member ki DP nahi hai / hide hai / circle nahi mila / koi bhi error aaye -> False return hota hai
+- Member ki DP nahi hai / hide hai to images/no_profile.jpg ("no profile picture" wali photo) circle mein lagti hai.
+- no_profile.jpg bhi na mile / circle nahi mila / koi bhi error aaye -> False return hota hai
   aur welcome.py purani 5 photos wala welcome bhej deta hai (welcome kabhi miss nahi hota).
 - Env: WELCOME_CARD_ENABLED=0 se band, WELCOME_BG_COUNT (default 5).
 """
@@ -27,6 +28,7 @@ log = logging.getLogger(__name__)
 ENABLED = os.environ.get("WELCOME_CARD_ENABLED", "1") != "0"
 BG_COUNT = int(os.environ.get("WELCOME_BG_COUNT", "5") or 5)
 OUTPUT_SIZE = 1080
+NO_PROFILE_ZOOM = 1.04   # no_profile photo itna andar se kaati jati hai (circle ke kinare par kaala hissa na dikhe)
 TEXT_COLOR = (70, 25, 110)
  
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -244,14 +246,14 @@ def _clean_name(title):
     return " ".join("".join(keep).split())
  
  
-def _compose(entry, dp_bytes, title):
+def _compose(entry, dp_bytes, title, zoom=1.0):
     bg, (cx, cy, r), strip = entry
     img = bg.copy()
  
     # DP -> square -> gol
     d = 2 * r + 2
     dp = Image.open(io.BytesIO(dp_bytes)).convert("RGB")
-    s = min(dp.size)
+    s = int(min(dp.size) / zoom)
     left, top = (dp.width - s) // 2, (dp.height - s) // 2
     dp = dp.crop((left, top, left + s, top + s)).resize((d, d), Image.LANCZOS)
     ss = 3
@@ -284,6 +286,41 @@ def _compose(entry, dp_bytes, title):
  
  
 # ---------------------------------------------------------------- telegram
+_default_dp = None   # no_profile photo ke bytes (ek baar load hoke yaad rehte hain)
+ 
+ 
+async def _default_dp_bytes():
+    """images/no_profile.jpg: jis member ki DP nahi (ya hide hai) uske circle mein ye photo lagti hai."""
+    global _default_dp
+    if _default_dp:
+        return _default_dp
+    data = None
+    for d in _IMAGE_DIRS:
+        for ext in ("jpg", "jpeg", "png", "jfif"):
+            path = os.path.join(d, f"no_profile.{ext}")
+            if os.path.isfile(path):
+                with open(path, "rb") as f:
+                    data = f.read()
+                break
+        if data:
+            break
+    if not data and _RAW_BASE:
+        import httpx
+        for ext in ("jpg", "png"):
+            url = f"{_RAW_BASE}/no_profile.{ext}"
+            try:
+                async with httpx.AsyncClient(timeout=8, follow_redirects=True) as c:
+                    r = await c.get(url)
+                if r.status_code == 200 and r.content:
+                    data = r.content
+                    break
+            except Exception as e:
+                log.warning("no_profile download failed (%s): %s", url, e)
+    if data:
+        _default_dp = data
+    return data
+ 
+ 
 async def _get_dp_bytes(context, user):
     photos = await context.bot.get_user_profile_photos(user.id, limit=1)
     if not photos or not photos.total_count or not photos.photos:
@@ -293,10 +330,18 @@ async def _get_dp_bytes(context, user):
  
  
 async def _build_card(context, chat, member):
-    dp = await _get_dp_bytes(context, member)
+    try:
+        dp = await _get_dp_bytes(context, member)
+    except Exception as e:
+        log.warning("welcome card: DP read failed for user %s: %s", member.id, e)
+        dp = None
+    zoom = 1.0
     if not dp:
-        log.info("welcome card: no DP for user %s -> old photo", member.id)
-        return None
+        dp = await _default_dp_bytes()   # DP nahi / hide hai -> "no profile picture" wali photo
+        zoom = NO_PROFILE_ZOOM
+        if not dp:
+            log.info("welcome card: no DP and no no_profile image for user %s -> old photo", member.id)
+            return None
     bag = _bg_order(chat.id)
     tried = 0
     while bag and tried < BG_COUNT:
@@ -305,7 +350,7 @@ async def _build_card(context, chat, member):
         entry = await _get_bg(n)
         if not entry:
             continue
-        card = await asyncio.to_thread(_compose, entry, dp, chat.title)
+        card = await asyncio.to_thread(_compose, entry, dp, chat.title, zoom)
         _bags[("last", chat.id)] = n
         return card
     return None
